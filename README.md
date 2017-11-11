@@ -1,0 +1,1 @@
+# THzProc Class in Python 3
