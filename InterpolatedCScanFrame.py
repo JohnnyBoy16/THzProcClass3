@@ -51,9 +51,9 @@ class InterpolatedCScanFrame(ParentFrame):
         """
         Updates the figure, by clearing the axis and remaking stuff, including the colorbar
         """
-        # At the moment it is necessary to have a separate method from plot, because it appears
-        # that there must be a call to colorbar.update_bruteforce to have the colorbar actually
-        # update
+        # At the moment it is necessary to have a separate method from plot(), because it appears
+        # that there must be a call to colorbar.update_bruteforce() to have the colorbar actually
+        # update. Using self.axis.cla() does not actually remove the colorbar
         self.axis.cla()
         self.image = self.axis.imshow(self.data.c_scan, interpolation='bilinear', cmap='jet',
                                       extent=self.data.c_scan_extent)
