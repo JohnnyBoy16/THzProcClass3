@@ -6,8 +6,17 @@ from ParentFrame import ParentFrame
 
 
 class AScanFrame(ParentFrame):
-    def __init__(self, holder, data):
-        ParentFrame.__init__(self, 'Raw A-Scan Test')
+    """
+    Displays the A-Scan of the last point clicked in the gray scale C-Scan image. Also contains
+    the movable gates that update the C-Scan.
+    """
+    def __init__(self, holder, data, title=None):
+        # TODO add functionality for frequency domain plots
+
+        if title is None:
+            title = 'A-Scan Frame'
+
+        super().__init__(title)  # call parent class
 
         self.holder = holder
 

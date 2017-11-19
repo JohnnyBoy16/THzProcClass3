@@ -6,12 +6,17 @@ from ParentFrame import ParentFrame
 
 
 class InterpolatedCScanFrame(ParentFrame):
+    """
+    Frame for the Interpolated C-Scan.
+    """
+    # this plot is not interactive. Clicking in the image will not change the A-Scan. However,
+    # the image will change when the gates are updated.
     def __init__(self, holder, data, title=None):
 
         if title is None:
             title = 'Interpolated C-Scan Test'
 
-        ParentFrame.__init__(self, title)
+        super().__init__(title)  # call parent class
 
         # the instance of holder class for this frame
         self.holder = holder

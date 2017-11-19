@@ -13,7 +13,7 @@ class ParentFrame(wx.Frame):
     # This organizes the code that all frames have in common into one place
 
     def __init__(self, title):
-        wx.Frame.__init__(self, None, -1, title)
+        super().__init__(None, -1, title)
 
         # holds the figure object
         self.figure = None

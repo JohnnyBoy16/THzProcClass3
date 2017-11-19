@@ -471,13 +471,15 @@ class THzData:
     def delta_calculator(self):
         """
         Calculates delta_t, delta_f, n_half_pulse, and the time and frequency array that are used
-        for plotting. Note that len(freq) is wave_length/2 + 1. This is so it can be used with
-        numpy's rfft function. Thomas's THzProc code uses len(freq) as wave_length/2.
+        for plotting.
         """
+        # Note that len(freq) is wave_length/2 + 1. This is so it can be used with
+        # numpy's rfft function. Thomas's THzProc code uses len(freq) as wave_length/2.
+
         self.delta_t = self.time_length / (self.wave_length - 1)
         self.delta_f = 1. / (self.wave_length * self.delta_t)
         self.time = np.linspace(0., self.time_length, self.wave_length)
-        self.freq = np.linspace(0., (self.wave_length/2) * self.delta_f, self.wave_length/2+1)
+        self.freq = np.linspace(0., (self.wave_length/2) * self.delta_f, self.wave_length//2+1)
         self.n_half_pulse = int(self.HALF_PULSE / self.delta_t)
         self.true_x_res = (self.x_max - self.x_min) / float(self.x_step - 1)
         self.true_y_res = (self.y_max - self.y_min) / float(self.y_step - 1)

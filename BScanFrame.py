@@ -6,8 +6,15 @@ from ParentFrame import ParentFrame
 
 
 class BScanFrame(ParentFrame):
-    def __init__(self, holder, data):
-        ParentFrame.__init__(self, 'B-Scan Test')
+    """
+    Frame to display the B-Scan at the last location clicked on in the gray scale C-Scan
+    """
+    def __init__(self, holder, data, title=None):
+
+        if title is None:
+            title = 'B-Scan Frame'
+
+        super().__init__(title)
 
         # the class instance holding stuff together
         self.holder = holder
@@ -34,8 +41,8 @@ class BScanFrame(ParentFrame):
         :param i: The column index to look at
         :param j: The row index to look at
         """
-        # show B-Scan for given (i, j) index, the THzData class handles the direction (either
-        # horizontal or vertical)
+        # show B-Scan for given (i, j) index, the THzData class handles the direction
+        # (either horizontal or vertical)
 
         self.axis.cla()
         self.data.make_b_scan(i, j)  # make the B-Scan image

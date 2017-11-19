@@ -6,8 +6,15 @@ from ParentFrame import ParentFrame
 
 
 class RawCScanFrame(ParentFrame):
-    def __init__(self, holder, data):
-        ParentFrame.__init__(self, 'Raw C-Scan Frame')
+    """
+    Frame for the gray-scale interactive C-Scan.
+    """
+    def __init__(self, holder, data, title=None):
+
+        if title is None:
+            title = 'Raw C-Scan Frame'
+
+        super().__init__(title)  # call parent class
 
         self.holder = holder
 
