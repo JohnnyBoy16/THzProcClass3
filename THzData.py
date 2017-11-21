@@ -304,6 +304,20 @@ class THzData:
             for j in range(self.x_step):
                 self.tof_c_scan[i, j] = self.time[tof_index[i, j]]
 
+    def correct_amplitude(self, filename, basedir=None):
+        """
+        Attempts to correct the amplitude for the time of flight in accordance with a gaussian
+        beam profile
+        """
+
+        if basedir is not None:
+            filename = os.path.join(basedir, filename)
+
+        data = np.loadtxt(filename)
+        distance = data[:, 0]
+        amplitude = data[:, 1]
+
+
     def resize(self, x0, x1, y0, y1):
         """
         Resizes the data in the bounds between x0, x1, y0, and y1. Should be used to remove the
