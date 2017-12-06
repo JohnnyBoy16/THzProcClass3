@@ -304,19 +304,73 @@ class THzData:
             for j in range(self.x_step):
                 self.tof_c_scan[i, j] = self.time[tof_index[i, j]]
 
-    def correct_amplitude(self, filename, basedir=None):
+    def correct_amplitude(self, filename, basedir=None, focus=None):
         """
         Attempts to correct the amplitude for the time of flight in accordance with a gaussian
         beam profile
         """
+        from scipy.interpolate import interp1d
+
+        c = 0.2998  # speed of light in mm/ps
+        theta0 = 17.5 * np.pi / 180  # incoming angle of THz beam
+
+        # need to the time of flight info to make adjustments, so if tof_c_scan has not been made
+        # made yet, make it
+        if self.tof_c_scan is None:
+            self.make_time_of_flight_c_scan()
 
         if basedir is not None:
             filename = os.path.join(basedir, filename)
 
-        data = np.loadtxt(filename)
-        distance = data[:, 0]
-        amplitude = data[:, 1]
+        distance, amplitude = np.loadtxt(filename, skiprows=1, unpack=True)
 
+        amplitude /= amplitude.max()  # normalize amplitude
+
+        # create the interpolation function
+        interp_f = interp1d(distance, amplitude, kind='quadratic')
+
+        if focus is None:
+            # assume that the pixel at (0, 0) is the focus
+            # all other TOF values will be in reference to this
+            j_idx = np.argmin(np.abs(self.x - 0))
+            i_idx = np.argmin(np.abs(self.y - 0))
+        else:
+            raise ValueError('Focus has to be (0,0) for now!')
+
+        tof_temp = copy.deepcopy(self.tof_c_scan)
+
+        tof_temp -= tof_temp[i_idx, j_idx]  # normalize TOF to focus point
+
+        i0 = np.where(self.y == self.y_small[0])[0][0]
+        i1 = np.where(self.y == self.y_small[-1])[0][0]
+        j0 = np.where(self.x == self.x_small[0])[0][0]
+        j1 = np.where(self.x == self.x_small[-1])[0][0]
+
+        # relative height of the sample
+        height = tof_temp[i0:i1+1, j0:j1+1] * c * np.cos(theta0) / 2
+        print('Max height = %0.4f', height.max())
+        print('Min Height = %0.4f', height.min())
+
+        amplitude_correction = interp_f(height)
+
+        import matplotlib.pyplot as plt
+        plt.figure('Height of the Sample')
+        plt.imshow(-height*1e3, interpolation='none', cmap='gray', extent=self.small_extent)
+        plt.title(r'THz Surface Height ($\mu m$)')
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.colorbar()
+        plt.grid()
+
+        plt.figure('Amplitude Correction for Sample')
+        plt.imshow(amplitude_correction, interpolation='none', cmap='gray',
+                   extent=self.small_extent)
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.colorbar()
+        plt.grid()
+
+        return self.c_scan_small / amplitude_correction
 
     def resize(self, x0, x1, y0, y1):
         """
@@ -330,16 +384,16 @@ class THzData:
 
         j0 = np.argmin(np.abs(self.x - x0))
         j1 = np.argmin(np.abs(self.x - x1))
-        self.x_zoomed = self.x[j0:j1]
+        self.x_small = self.x[j0:j1]
 
         i0 = np.argmin(np.abs(self.y - y0))
         i1 = np.argmin(np.abs(self.y - y1))
-        self.y_zoomed = self.y[i0:i1]
+        self.y_small = self.y[i0:i1]
 
-        self.c_scan_zoomed = self.c_scan[i0:i1, j0:j1]
+        self.c_scan_small = self.c_scan[i0:i1, j0:j1]
 
-        self.zoomed_extent = (self.x_zoomed[0], self.x_zoomed[-1], self.y_zoomed[0],
-                              self.y_zoomed[-1])
+        self.small_extent = (self.x_small[0], self.x_small[-1], self.y_small[0],
+                              self.y_small[-1])
 
     def center_coordinates(self):
         """

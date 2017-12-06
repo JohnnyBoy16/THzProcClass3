@@ -60,7 +60,7 @@ class AScanFrame(ParentFrame):
         self.axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--', picker=2)
         self.axis.set_xlabel('Time (ps)', fontsize=14)
         self.axis.set_ylabel('Amplitude', fontsize=14)
-        # self.axis.set_title(title_string, fontsize=14)
+        self.axis.set_title(title_string, fontsize=14)
         self.axis.grid()
         self.figure_canvas.draw()
 
