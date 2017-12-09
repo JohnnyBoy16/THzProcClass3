@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from THzData import THzData
 from FrameHolder import FrameHolder
 
-basedir = 'C:\\Work\\Faint Defect Testing\\Yellow Composite'
+basedir = 'D:\\Work\\Faint Defect Testing\\Yellow Composite'
 filename = 'Scan with Two Tape Defects F@FS Take 2 (res=0.5mm).tvl'
 
 data = THzData(filename, basedir, follow_gate_on=True)
