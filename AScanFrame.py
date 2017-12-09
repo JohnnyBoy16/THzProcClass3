@@ -1,6 +1,7 @@
 import pdb
 
 import numpy as np
+from matplotlib.lines import Line2D
 
 from ParentFrame import ParentFrame
 
@@ -34,7 +35,7 @@ class AScanFrame(ParentFrame):
         self.connect_events()
 
     def connect_events(self):
-        self.figure_canvas.mpl_connect('button_press_event', self.grab_gate_handler)
+        self.figure_canvas.mpl_connect('pick_event', self.grab_gate_handler)
         self.figure_canvas.mpl_connect('button_release_event', self.release_gate_handler)
         self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
 
@@ -59,7 +60,7 @@ class AScanFrame(ParentFrame):
         self.axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--', picker=2)
         self.axis.set_xlabel('Time (ps)', fontsize=14)
         self.axis.set_ylabel('Amplitude', fontsize=14)
-        # self.axis.set_title(title_string, fontsize=14)
+        self.axis.set_title(title_string, fontsize=14)
         self.axis.grid()
         self.figure_canvas.draw()
 
@@ -97,15 +98,21 @@ class AScanFrame(ParentFrame):
         if not self.is_initialized:
             return
 
-        if event.xdata is not None and event.ydata is not None:
-            print('You clicked', event.xdata, event.ydata)
-            index = event.xdata * self.data.wave_length / self.data.time_length  # convert to index
+        # if the user does not click on one of the gate lines
+        if not isinstance(event.artist, Line2D):
+            return
 
-            print('Index grabbed =', index)
-            # this is the gate to replace
-            self.data.gate_index = np.argmin(np.abs(np.asarray(self.data.gate) - index))
+        line = event.artist
+        xdata = line.get_xdata()[0]
 
-            print('Gate Index grabbed =', self.data.gate_index)
+        print('You clicked', xdata)
+        index = xdata * self.data.wave_length / self.data.time_length  # convert to index
+
+        print('Index grabbed =', index)
+        # this is the gate to replace
+        self.data.gate_index = np.argmin(np.abs(np.asarray(self.data.gate) - index))
+
+        print('Gate Index grabbed =', self.data.gate_index)
 
     def release_gate_handler(self, event):
         """
@@ -117,25 +124,28 @@ class AScanFrame(ParentFrame):
         if not self.is_initialized:
             return
 
-        if event.xdata is not None and event.ydata is not None:
-            print('You released at', event.xdata, event.ydata)
-            # convert to index
-            index = int(round(event.xdata * self.data.wave_length / self.data.time_length, 0))
-            print('Index released at =', index)
-            # ensure that the gate is inside of the bounds
-            if index < 0:
-                index = 0
-            elif index > self.data.wave_length:
-                index = self.data.wave_length
-            print(index)
-            self.data.gate[0][self.data.gate_index] = index
+        # if the user does not click in the image
+        if event.xdata is None or event.ydata is None:
+            return
 
-            print('New gate value =', self.data.gate)
+        print('You released at', event.xdata, event.ydata)
+        # convert to index
+        index = int(round(event.xdata * self.data.wave_length / self.data.time_length, 0))
+        print('Index released at =', index)
+        # ensure that the gate is inside of the bounds
+        if index < 0:
+            index = 0
+        elif index > self.data.wave_length:
+            index = self.data.wave_length
+        print(index)
+        self.data.gate[0][self.data.gate_index] = index
 
-            if self.data.follow_gate_on:
-                self.data.find_peaks()  # call find peaks to update peak_bin if follow gate is on
-            self.data.make_c_scan()  # Generate the new C-Scan data based on gate location
+        print('New gate value =', self.data.gate)
 
-            self.plot(self.i_index, self.j_index)  # update A-Scan to show new gate
-            self.holder.raw_c_scan_frame.update()
-            self.holder.interpolated_c_scan_frame.update()
+        if self.data.follow_gate_on:
+            self.data.find_peaks()  # call find peaks to update peak_bin if follow gate is on
+        self.data.make_c_scan()  # Generate the new C-Scan data based on gate location
+
+        self.plot(self.i_index, self.j_index)  # update A-Scan to show new gate
+        self.holder.raw_c_scan_frame.update()
+        self.holder.interpolated_c_scan_frame.update()

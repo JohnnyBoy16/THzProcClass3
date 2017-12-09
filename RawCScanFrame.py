@@ -102,3 +102,7 @@ class RawCScanFrame(ParentFrame):
 
             self.holder.a_scan_frame.plot(self.i_index, self.j_index)
             self.holder.b_scan_frame.plot(self.i_index, self.j_index)
+
+            print(self.data.waveform[self.i_index, self.j_index, :].max())
+            print(self.data.time[self.data.waveform[self.i_index, self.j_index, :].argmax()])
+            print()
