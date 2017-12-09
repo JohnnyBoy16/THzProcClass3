@@ -3,7 +3,6 @@ import os
 import copy
 import struct
 import pdb
-import sys
 from thz_functions import ReMap, AmpCor300, FindPeaks
 
 # THINGS THAT STILL HAVE TO BE IMPLEMENTED
@@ -310,6 +309,8 @@ class THzData:
         beam profile
         """
         from scipy.interpolate import interp1d
+        from scipy.optimize import curve_fit
+        import util
 
         c = 0.2998  # speed of light in mm/ps
         theta0 = 17.5 * np.pi / 180  # incoming angle of THz beam
@@ -326,8 +327,33 @@ class THzData:
 
         amplitude /= amplitude.max()  # normalize amplitude
 
-        # create the interpolation function
-        interp_f = interp1d(distance, amplitude, kind='quadratic')
+        # only interested in the values close to maximum as ceramic is pretty flat
+        # should give a better fit
+        max_index = amplitude.argmax()
+        amplitude = amplitude[max_index-5:max_index+6]
+        distance = distance[max_index-5:max_index+6]
+
+        # initial parameter guesses for curve_fit to Gaussian
+        a = 1  # amplitude
+        b = 0  # center
+        c = 0.25  # width
+        p0 = (a, b, c)
+
+        # only want best fit parameters back
+        p = curve_fit(util.guassian_curve, distance, amplitude, p0)[0]
+        print(p)
+        # p[1] = 0  # set b to be 0, center the curve
+
+        x = np.linspace(-0.25, 0.25, 100)
+        y = util.guassian_curve(x, *p)
+
+        import matplotlib.pyplot as plt
+        plt.figure('Gaussian Curve Fit Test')
+        plt.plot(x, y, 'b', label='Best Fit')
+        plt.plot(distance, amplitude, 'ro', label='True Points')
+        plt.xlabel('Distance from Focus (mm)')
+        plt.ylabel('Normalized Amplitude')
+        plt.grid()
 
         if focus is None:
             # assume that the pixel at (0, 0) is the focus
@@ -347,30 +373,26 @@ class THzData:
         j1 = np.where(self.x == self.x_small[-1])[0][0]
 
         # relative height of the sample
+        # NOTE!!!!!!!!: the height array is actually the negative of what it should be.
+        # however we want this because the THz gantry considers -z to be up
         height = tof_temp[i0:i1+1, j0:j1+1] * c * np.cos(theta0) / 2
-        print('Max height = %0.4f', height.max())
-        print('Min Height = %0.4f', height.min())
+        print('Max height = %0.4f' % height.min())  # therefore min() is actually highest point
+        print('Min Height = %0.4f' % height.max())  # and max() is lowest
 
-        amplitude_correction = interp_f(height)
-
-        import matplotlib.pyplot as plt
-        plt.figure('Height of the Sample')
-        plt.imshow(-height*1e3, interpolation='none', cmap='gray', extent=self.small_extent)
-        plt.title(r'THz Surface Height ($\mu m$)')
-        plt.xlabel('X Scan Location (mm)')
-        plt.ylabel('Y Scan Location (mm)')
-        plt.colorbar()
-        plt.grid()
+        amplitude_correction = util.guassian_curve(height, *p)
 
         plt.figure('Amplitude Correction for Sample')
         plt.imshow(amplitude_correction, interpolation='none', cmap='gray',
                    extent=self.small_extent)
         plt.xlabel('X Scan Location (mm)')
         plt.ylabel('Y Scan Location (mm)')
+        plt.title('Amplitude Correction Factor')
         plt.colorbar()
         plt.grid()
 
-        return self.c_scan_small / amplitude_correction
+        c_scan_corrected = self.c_scan_small / amplitude_correction
+
+        return c_scan_corrected, height
 
     def resize(self, x0, x1, y0, y1):
         """
@@ -393,7 +415,10 @@ class THzData:
         self.c_scan_small = self.c_scan[i0:i1, j0:j1]
 
         self.small_extent = (self.x_small[0], self.x_small[-1], self.y_small[0],
-                              self.y_small[-1])
+                             self.y_small[-1])
+
+        if self.tof_c_scan is not None:
+            self.tof_c_scan_small = self.tof_c_scan[i0:i1, j0:j1]
 
     def center_coordinates(self):
         """
