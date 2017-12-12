@@ -59,9 +59,8 @@ class RawCScanFrame(ParentFrame):
         self.axis.cla()
         self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
                                       extent=self.data.c_scan_extent, picker=True)
-        # self.axis.set_title('Raw C-Scan Test', fontsize=16)
-        self.axis.set_xlabel('X Scan Location (mm)', fontsize=14)
-        self.axis.set_ylabel('Y Scan Location (mm)', fontsize=14)
+        self.axis.set_xlabel('X Scan Location (mm)')
+        self.axis.set_ylabel('Y Scan Location (mm)')
         self.colorbar.update_bruteforce(self.image)
         self.axis.grid()
         self.figure_canvas.draw()

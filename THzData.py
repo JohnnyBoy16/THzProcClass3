@@ -171,7 +171,7 @@ class THzData:
         self.find_peaks()
 
         self.c_scan_extent = (self.x_min, self.x_max, self.y_max, self.y_min)
-        self.b_scan_extent = (self.x_min, self.x_max, self.time_length, 0)
+        self.b_scan_extent = (self.x_min, self.x_max, 0, self.time_length)
 
         # Generate the C-Scan
         self.make_c_scan(signal_type)
@@ -398,10 +398,10 @@ class THzData:
         """
         Resizes the data in the bounds between x0, x1, y0, and y1. Should be used to remove the
         edges from the data if it was over scanned
-        :param x0: The left most x value in the new image
-        :param x1: The right most x value in the new image
-        :param y0: The bottom most y value in the new image
-        :param y1: The top most y value in the new image
+        :param x0: The smallest x value in the new image
+        :param x1: The largest x value in the new image
+        :param y0: The smallest y value in the new image
+        :param y1: The largest y value in the new image
         """
 
         j0 = np.argmin(np.abs(self.x - x0))
@@ -413,6 +413,7 @@ class THzData:
         self.y_small = self.y[i0:i1]
 
         self.c_scan_small = self.c_scan[i0:i1, j0:j1]
+        self.waveform_small = self.waveform[i0:i1, j0:j1, :]
 
         self.small_extent = (self.x_small[0], self.x_small[-1], self.y_small[0],
                              self.y_small[-1])
@@ -444,6 +445,7 @@ class THzData:
         # call to transpose is necessary to flip data axis, so x or y location is on the bottom and
         # time is along the y-axis on the plot
         self.b_scan = np.transpose(self.b_scan)
+        self.b_scan = np.flipud(self.b_scan)  # flip so top of sample is at bottom of image
 
     def set_follow_gate(self, given_boolean):
         """
