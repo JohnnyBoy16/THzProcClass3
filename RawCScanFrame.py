@@ -40,7 +40,7 @@ class RawCScanFrame(ParentFrame):
         previously
         """
         self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
-                                      extent=self.data.c_scan_extent, picker=True)
+                                      extent=self.data.c_scan_extent, picker=True, origin='upper')
         # self.axis.set_title('Raw C-Scan Test', fontsize=16)
         self.axis.set_xlabel('X Scan Location (mm)', fontsize=14)
         self.axis.set_ylabel('Y Scan Location (mm)', fontsize=14)

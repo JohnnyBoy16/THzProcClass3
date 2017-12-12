@@ -407,13 +407,18 @@ class THzData:
         j0 = np.argmin(np.abs(self.x - x0))
         j1 = np.argmin(np.abs(self.x - x1))
         self.x_small = self.x[j0:j1]
+        self.x_step_small = len(self.x_small)
 
         i0 = np.argmin(np.abs(self.y - y0))
         i1 = np.argmin(np.abs(self.y - y1))
         self.y_small = self.y[i0:i1]
+        self.y_step_small = len(self.y_small)
 
-        self.c_scan_small = self.c_scan[i0:i1, j0:j1]
         self.waveform_small = self.waveform[i0:i1, j0:j1, :]
+
+        max_amp = np.amax(self.waveform_small[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
+        min_amp = np.amin(self.waveform_small[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
+        self.c_scan = max_amp - min_amp
 
         self.small_extent = (self.x_small[0], self.x_small[-1], self.y_small[0],
                              self.y_small[-1])

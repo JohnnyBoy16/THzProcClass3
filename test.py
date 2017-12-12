@@ -9,8 +9,8 @@ import numpy as np
 from THzData import THzData
 from FrameHolder import FrameHolder
 
-basedir = 'F:\\RR 2016\\THz Data\\4-1'
-filename = '4-1 10-19-2016 (100ps res=0.25mm).tvl'
+basedir = ''
+filename = ''
 
 data = THzData(filename, basedir, follow_gate_on=True)
 
