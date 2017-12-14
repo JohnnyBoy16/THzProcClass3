@@ -2,7 +2,6 @@ from AScanFrame import AScanFrame
 from RawCScanFrame import RawCScanFrame
 from BScanFrame import BScanFrame
 from InterpolatedCScanFrame import InterpolatedCScanFrame
-from ZoomedCScanFrame import ZoomedCScanFrame
 
 
 class FrameHolder:
