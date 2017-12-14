@@ -43,7 +43,7 @@ class InterpolatedCScanFrame(ParentFrame):
         """
         Plot the interpolated C-Scan for the current gate location
         """
-        self.image = self.axis.imshow(self.data.c_scan, interpolation='bilinear', cmap='jet',
+        self.image = self.axis.imshow(self.data.c_scan, interpolation='biliniear', cmap='jet',
                                       extent=self.data.c_scan_extent)
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
