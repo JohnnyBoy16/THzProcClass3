@@ -418,7 +418,7 @@ class THzData:
 
         max_amp = np.amax(self.waveform_small[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
         min_amp = np.amin(self.waveform_small[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
-        self.c_scan = max_amp - min_amp
+        self.c_scan_small = max_amp - min_amp
 
         self.small_extent = (self.x_small[0], self.x_small[-1], self.y_small[0],
                              self.y_small[-1])
@@ -458,7 +458,7 @@ class THzData:
         bin_range and peak_bin.
         :param given_boolean: True: follow gate is on. False: follow gate is off.
         """
-        # if use tries to set it to the value that it already is, do nothing
+        # if user tries to set it to the value that it already is, do nothing
         if self.follow_gate_on == given_boolean:
             return
 
