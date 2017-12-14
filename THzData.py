@@ -458,7 +458,7 @@ class THzData:
         bin_range and peak_bin.
         :param given_boolean: True: follow gate is on. False: follow gate is off.
         """
-        # if use tries to set it to the value that it already is, do nothing
+        # if user tries to set it to the value that it already is, do nothing
         if self.follow_gate_on == given_boolean:
             return
 
