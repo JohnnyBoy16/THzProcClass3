@@ -53,7 +53,7 @@ class ParentFrame(wx.Frame):
         """
         Creates a matplotlib toolbar and adds it to the status bar
         """
-        # toolbar which allows users to save, zoom, pan, ect...
+        # status bar which shows information about current mouse location
         self.status_bar = wx.StatusBar(self, -1)
         self.status_bar.SetFieldsCount(1)
         self.SetStatusBar(self.status_bar)

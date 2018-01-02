@@ -83,7 +83,7 @@ class RawCScanFrame(ParentFrame):
             x_index = int((xid - self.data.x_min) / self.data.delta_x)
             y_index = int((yid - self.data.y_min) / self.data.delta_y)
             point_amp = self.data.c_scan[y_index, x_index]
-            status_string = '(%.6f, %.6f), [%.6f]' % (xid, yid, point_amp)
+            status_string = '(%.4f, %.4f), [%.4f]' % (xid, yid, point_amp)
             self.status_bar.SetStatusText(status_string)
         else:
             self.status_bar.SetStatusText('')
@@ -95,13 +95,13 @@ class RawCScanFrame(ParentFrame):
         x_data = event.xdata
         y_data = event.ydata
 
+        # apparent method to check if matplotlib toolbar is clicked
+        # doesn't seem to work with the wx backend yet
+        # print(self.figure_canvas.manager.toolmanager.active_toggle())
+
         if x_data and y_data is not None:  # make sure that the user clicks inside of the plot
             self.i_index = int((y_data - self.data.y_min) / self.data.delta_y)
             self.j_index = int((x_data - self.data.x_min) / self.data.delta_x)
 
             self.holder.a_scan_frame.plot(self.i_index, self.j_index)
             self.holder.b_scan_frame.plot(self.i_index, self.j_index)
-
-            print(self.data.waveform[self.i_index, self.j_index, :].max())
-            print(self.data.time[self.data.waveform[self.i_index, self.j_index, :].argmax()])
-            print()

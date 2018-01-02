@@ -2,17 +2,14 @@
 Script for testing THzData class
 """
 import wx
-import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
-import numpy as np
 
 from THzData import THzData
 from FrameHolder import FrameHolder
 
-basedir = 'F:\\RR 2016\\THz Data\\Grinding Trial Sample\\1st Grind'
-filename = 'Sample 4-1 After 1st Polish res=0.25mm.tvl'
+basedir = 'D:\\RR 2017\\THz Data\\Coated Rods'
+filename = 'Fully Coated Sample (res=0.5mm OD=40ps).tvl'
 
-data = THzData(filename, basedir, follow_gate_on=True)
+data = THzData(filename, basedir, follow_gate_on=True, signal_type=1)
 
 app = wx.App(False)
 
