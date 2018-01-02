@@ -97,12 +97,12 @@ import pdb
 
 # =======================================================================================================================================
 
-basedir = 'C:\\Work\\Signal Modelling\\THz Data\\HDPE Lens'
-filename = 'Smooth Side (res=0.5mm, OD=60ps).tvl'
+basedir = 'F:\\RR 2017\\THz Data\\Black CMC'
+filename = 'Sample 1 (res=0.25mm OD=60ps).tvl'
 FollowGateOn=1
 FSEtol=-0.17 ; FlagPeakOn=1 ; DepthMapOn=0 ; PeakPick=1; MayaviOn=0 ; TrendOff=0 ; AscanOnly=1
 SigType=1 ; BscanOn=1 ; BscanDir=0
-gate=[[100,1000],[-200, 200]]
+gate=[[100,1000],[2100, 2700]]
 workf=3. ; AmpCompOn=0 ; MfOn=0 ; DepOut=0 ; skip=10 ; DepAmpTol=0.5 # threshold for depth/thickness: 0.2 for output, 0.5 for visual
 AmpCor300On=1 ; AmpCor300Par=[0.,35.,5.0,1.,240.,300.,1.,4.5,4.]
 Zminfac=1.0 ; Zmaxfac=1.0 ; VppGateOn=0 ; VppL1=0. ; VppH1=0.58 ; VppL2=0.58 ; VppH2=4.
