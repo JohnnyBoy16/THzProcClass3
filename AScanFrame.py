@@ -45,7 +45,8 @@ class AScanFrame(ParentFrame):
         :param i: The row from which to plot the waveform
         :param j: The column from which to plot the waveform
         """
-        if not self.is_initialized:
+
+        if not self.is_initialized:  # set value, so motion handler method can function
             self.is_initialized = True
 
         # store the (i, j) that were clicked on
@@ -56,10 +57,20 @@ class AScanFrame(ParentFrame):
 
         self.axis.cla()
         self.axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
-        self.axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--', picker=2)
-        self.axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--', picker=2)
-        self.axis.set_xlabel('Time (ps)', fontsize=14)
-        self.axis.set_ylabel('Amplitude', fontsize=14)
+        self.axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--',
+                          linewidth=1.0, picker=2)
+        self.axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--',
+                          linewidth=1.0, picker=2)
+
+        # if follow gate is active; plot them
+        if self.data.follow_gate_on:
+            follow1_idx = self.data.peak_bin[3, 1, i, j]
+            follow2_idx = self.data.peak_bin[4, 1, i, j]
+            self.axis.axvline(self.data.time[follow1_idx], color='b', linewidth=1.0, picker=2)
+            self.axis.axvline(self.data.time[follow2_idx], color='g', linewidth=1.0, picker=2)
+
+        self.axis.set_xlabel('Time (ps)')
+        self.axis.set_ylabel('Amplitude')
         self.axis.set_title(title_string, fontsize=14)
         self.axis.grid()
         self.figure_canvas.draw()
@@ -69,6 +80,7 @@ class AScanFrame(ParentFrame):
         Prints the current (x,y) values that the mouse is over to the status bar along with the
         amplitude of the waveform at that time.
         """
+
         # if no C-Scan point has been clicked on yet, do nothing
         if not self.is_initialized:
             return
@@ -85,7 +97,7 @@ class AScanFrame(ParentFrame):
 
             point_amp = self.data.waveform[self.i_index, self.j_index, t_index]
 
-            status_string = '(%.6f, %.6f), [%.6f]' % (xid, yid, point_amp)
+            status_string = '(%.4f, %.4f), [%.4f]' % (xid, yid, point_amp)
             self.status_bar.SetStatusText(status_string)
         else:
             self.status_bar.SetStatusText('')
@@ -103,16 +115,12 @@ class AScanFrame(ParentFrame):
             return
 
         line = event.artist
+        self.gate_held = event.artist
         xdata = line.get_xdata()[0]
+        print(len(line.get_xdata()))
 
-        print('You clicked', xdata)
-        index = xdata * self.data.wave_length / self.data.time_length  # convert to index
-
-        print('Index grabbed =', index)
-        # this is the gate to replace
-        self.data.gate_index = np.argmin(np.abs(np.asarray(self.data.gate) - index))
-
-        print('Gate Index grabbed =', self.data.gate_index)
+        line.set_linewidth(2.0)  # make the line clicked on bold
+        self.figure_canvas.draw()
 
     def release_gate_handler(self, event):
         """
@@ -124,9 +132,13 @@ class AScanFrame(ParentFrame):
         if not self.is_initialized:
             return
 
-        # if the user does not click in the image
+        # if the user does not click in the image, exit
         if event.xdata is None or event.ydata is None:
             return
+
+        self.gate_held.set_xdata([event.xdata, event.xdata])
+        self.gate_held.set_linewidth(1.0)  # return to normal width
+        self.figure_canvas.draw()
 
         print('You released at', event.xdata, event.ydata)
         # convert to index
@@ -144,7 +156,9 @@ class AScanFrame(ParentFrame):
 
         if self.data.follow_gate_on:
             self.data.find_peaks()  # call find peaks to update peak_bin if follow gate is on
-        self.data.make_c_scan()  # Generate the new C-Scan data based on gate location
+
+        # Generate the new C-Scan data based on the new gate location
+        self.data.make_c_scan(self.data.signal_type)
 
         self.plot(self.i_index, self.j_index)  # update A-Scan to show new gate
         self.holder.raw_c_scan_frame.update()

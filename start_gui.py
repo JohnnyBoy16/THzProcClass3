@@ -195,8 +195,6 @@ class StartPanel(wx.Panel):
 
 
 if __name__ == '__main__':
-    from FrameHolder import FrameHolder
-    from THzData import THzData
 
     # create a new app and don't redirect stdout/stderr to a window
     # not sure what this does exactly
@@ -204,8 +202,6 @@ if __name__ == '__main__':
 
     # instantiate the class
     frame = StartFrame(title='THzProc Start GUI')
-
-    # holder = FrameHolder(data)
 
     # start the event loop
     app.MainLoop()

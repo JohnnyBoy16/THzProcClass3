@@ -34,6 +34,9 @@ class THzData:
         else:
             self.follow_gate_on = follow_gate_on
 
+        # set signal_type to pass to make_c_scan()
+        self.signal_type = signal_type
+
         self.x = dat.data[3:]['x']
         self.y = dat.data[3:]['y']
         self.waveform = dat.data['waveform'][3:]
@@ -174,9 +177,9 @@ class THzData:
         self.b_scan_extent = (self.x_min, self.x_max, 0, self.time_length)
 
         # Generate the C-Scan
-        self.make_c_scan(signal_type)
+        self.make_c_scan(self.signal_type)
 
-    def make_c_scan(self, signal_type=0):
+    def make_c_scan(self, signal_type):
         """
         Generates the C-Scan based on the gate location and signal type
         At the moment this just does peak to peak voltage response
@@ -307,6 +310,7 @@ class THzData:
         """
         Attempts to correct the amplitude for the time of flight in accordance with a gaussian
         beam profile
+        :param
         """
         from scipy.interpolate import interp1d
         from scipy.optimize import curve_fit

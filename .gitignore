@@ -4,3 +4,7 @@ __pycache__
 
 # Ignore the driving / testing file because it changes a lot
 test.py
+
+# Also ignore base THzProc, this will not be updated
+# is only around for reference
+THzProc1_12.py
