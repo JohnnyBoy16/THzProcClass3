@@ -188,7 +188,7 @@ class THzData:
                         0: (default) Use Peak to Peak voltage with the front gates regardless of
                            whether follow gate is on or not.
                         1: Use Peak to Peak voltage with the follow gates if on. If follow gate
-                           is not on then use peak to peak within front gate
+                           is not on then use peak to peak voltage across entire waveform
                         2: avg mag (mag = abs amp)
                         3: median mag
                         4: min mag
