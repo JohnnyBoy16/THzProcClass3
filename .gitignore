@@ -8,3 +8,6 @@ test.py
 # Also ignore base THzProc, this will not be updated
 # is only around for reference
 THzProc1_12.py
+
+# ignore b-scan slicing driver
+b_scan_slicing_script.py
