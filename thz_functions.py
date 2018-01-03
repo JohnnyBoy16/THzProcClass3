@@ -16,7 +16,6 @@ Function Descriptions:
 """
 import pdb
 import numpy as np
-import sys
 
 
 def ReMap(waveform, X, Y, Xmax, Xmin, Ymin, Xres, Yres, Xstep, Ystep, ScanType, axis1, wavlen,
@@ -155,8 +154,7 @@ def ReMap(waveform, X, Y, Xmax, Xmin, Ymin, Xres, Yres, Xstep, Ystep, ScanType, 
         Xend = np.min([pos[i][4] for i in
                        range(Ystep)])  # was Xbeg=np.max([pos[:][1]), etc. Got Wrong number!
     else:
-        print("unknown scan type!")
-        sys.exit(1)
+        raise IOError("unknown scan type!")
 
     # correct angular coords. of rotational scan: map the current wrong coords. closer to the (Xmin,Xmax) size
     # enlarge the size a bit (by adding tiny at each end) to allow later interpolation possible for all new positions
@@ -366,20 +364,19 @@ def ReMap(waveform, X, Y, Xmax, Xmin, Ymin, Xres, Yres, Xstep, Ystep, ScanType, 
                                                           0:wavlen - shift] - fac * refwav[shift:]
                     WaveformNew[i, j, wavlen - shift:] = WaveformNew[i, j, wavlen - shift - 1]
 
+    # Trend off uses a reference waveform
     elif TrendOff == 3 or TrendOff == 4:
 
         time, tmp, n, delt, Tdat = open_asn_dat2(basedir, refname)
         if abs(Tdat - wavtlen) > 0.2:
-            print('reference waveform time length not agree with data!')
-            sys.exit(1)
+            raise ValueError('reference waveform time length not agree with data!')
         refwav = np.zeros(wavlen, dtype='<f')
         if n == wavlen:
             refwav[:] = tmp[:]
         elif n == 2 * wavlen:
             refwav[:] = tmp[::2]
         else:
-            print('invalid length of reference waveform for baseline removal!')
-            sys.exit(1)
+            raise ValueError('invalid length of reference waveform for baseline removal!')
         early = np.zeros(50, dtype=int);
         late = np.zeros(50, dtype=int);
         total = float(Xstep * Ystep)
@@ -445,6 +442,7 @@ def AmpCor300(parameters, wavlen, delt, Xstep, Ystep, WaveformNew):
     # fit A=a*T**b on both ends to remove excessive amplitude amplification for 300 ps waveforms
     # last update: 08JUN2015
 
+    # order of variables in parameters array
     # TLL,TLR,ALL,ALR,TRL,TRR,ARL,ARR,p
 
     TLL = parameters[0]
@@ -522,40 +520,39 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                         itmp2 = np.argmax(waveform[i, j, itmp2:itmp2 + nHalfPulse]) + itmp2
                         PeakBin[0, 0, i, j] = itmp2
                 # find the neg. peak within pulse width=2*nHalfPulse
-                L = PeakBin[0, 0, i, j] - nHalfPulse;
+                L = PeakBin[0, 0, i, j] - nHalfPulse
                 L = (L if L > 0 else 0)
-                R = PeakBin[0, 0, i, j] + nHalfPulse;
+                R = PeakBin[0, 0, i, j] + nHalfPulse
                 R = (R if R <= wavlen else wavlen)
                 PeakBin[1, 0, i, j] = np.argmin(waveform[i, j, L:R]) + L
                 PeakBin[2, 0, i, j] = (PeakBin[0, 0, i, j] + PeakBin[1, 0, i, j]) / 2
-                PeakBin[3, 0, i, j] = BinRange[0][0];
+                PeakBin[3, 0, i, j] = BinRange[0][0]
                 PeakBin[4, 0, i, j] = BinRange[0][1]
                 # all trailing gates are then shifted wrt the pos. leading peak, PeakBin[0,0,i,j]
                 for k in range(1, npeak):
-                    L = PeakBin[0, 0, i, j] + BinRange[k][0];
+                    L = PeakBin[0, 0, i, j] + BinRange[k][0]
                     R = PeakBin[0, 0, i, j] + BinRange[k][1] + 1
                     if L < 0:
                         L = 0
                     elif L > wavlen:
-                        print("incorrect left gate setting in ", k, "th gate!")
-                        sys.exit(1)
-                    if R < L:  # corrected 15SEP2013
-                        print("incorrect right gate setting in ", k, "th gate!")
-                        sys.exit(1)
+                        pdb.set_trace()
+                        raise ValueError("Incorrect left gate setting in gate", k)
+                    if R < L:  # corrected 15SEP2013; right follow gate is less than left followgate
+                        raise ValueError("Incorrect right gate setting in gate", k)
                     elif R > wavlen:
                         R = wavlen
-                    PeakBin[3, k, i, j] = L;
+                    PeakBin[3, k, i, j] = L
                     PeakBin[4, k, i, j] = R
                     PeakBin[0, k, i, j] = np.argmax(waveform[i, j, L:R]) + L
                     if PulseLen < 0.:  # 29DEC2015: enforce searcg of neg. peak within original gate
-                        L2 = L;
+                        L2 = L
                         R2 = R
                     else:
                         LL = int(PulseLen * nHalfPulse)
                         if LL < 1:  LL = 1  # 29DEC2015: to prevent zero-length gate
-                        L2 = PeakBin[0, k, i, j] - LL;
+                        L2 = PeakBin[0, k, i, j] - LL
                         L2 = (L2 if L2 > L else L)
-                        R2 = PeakBin[0, k, i, j] + LL;
+                        R2 = PeakBin[0, k, i, j] + LL
                         R2 = (R2 if R2 <= wavlen else wavlen)
                     PeakBin[1, k, i, j] = np.argmin(waveform[i, j, L2:R2]) + L2
                     PeakBin[2, k, i, j] = (PeakBin[0, k, i, j] + PeakBin[1, k, i, j]) / 2
