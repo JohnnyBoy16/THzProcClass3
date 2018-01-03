@@ -535,7 +535,6 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                     if L < 0:
                         L = 0
                     elif L > wavlen:
-                        pdb.set_trace()
                         raise ValueError("Incorrect left gate setting in gate", k)
                     if R < L:  # corrected 15SEP2013; right follow gate is less than left followgate
                         raise ValueError("Incorrect right gate setting in gate", k)

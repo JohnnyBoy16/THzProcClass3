@@ -209,7 +209,7 @@ class THzData:
             min_amp = np.amin(self.waveform[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
             self.c_scan = max_amp - min_amp
 
-        # use Vpp within the follow gates if on, else within front gates
+        # use Vpp within the follow gates if on, else use Vpp across entire A-Scan
         # It appears that using peak bin does not allow for vectorization
         elif signal_type == 1:
             if self.follow_gate_on:
@@ -488,17 +488,20 @@ class THzData:
                     numpy array
         """
 
+        # incoming_gate is the same as what gate currently is; do nothing
         if np.array_equal(self.gate, incoming_gate):
             return
-        # if the user passed through a value for gate, make sure that it is 2x2
+        # make sure that incoming_gate is a 2x2 array
         elif np.shape(np.asarray(incoming_gate)) != (2, 2):
             raise ValueError('gate must by a 2x2 list or numpy array!')
-        else:
-            self.gate = copy.deepcopy(incoming_gate)
 
         # update bin_range and call find peaks with new bin_range
-        self.bin_range = copy.deepcopy(self.gate)
+        self.bin_range = copy.deepcopy(incoming_gate)
         self.find_peaks()
+
+        # Update gate after everything else in case an error is thrown in find_peaks().
+        # If an error is thrown, gate will not update. This is what we want
+        self.gate = copy.deepcopy(incoming_gate)
 
     def set_b_scan_on(self, given_boolean):
         pass

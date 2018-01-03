@@ -1,4 +1,5 @@
 import pdb
+import copy
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -25,8 +26,18 @@ class AScanFrame(ParentFrame):
         self.data = data
 
         # the last i (row) and j (column) coordinates to be clicked on
-        self.i_index = None
-        self.j_index = None
+        self.i_index = int
+        self.j_index = int
+
+        # value that allows the gate that is grabbed to be stored so it can be moved
+        # 0 = front lead gate
+        # 1 = back lead gate
+        # 2 = front follow gate
+        # 3 = back follow gate
+        self.gate_held = None
+
+        # stores the line object that is clicked on when moving the gates
+        self.line_held = None
 
         # tells itself when it has plotted the first time,
         # otherwise motion_handler() throws errors if nothing has been plotted yet
@@ -57,6 +68,7 @@ class AScanFrame(ParentFrame):
 
         self.axis.cla()
         self.axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
+
         self.axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--',
                           linewidth=1.0, picker=2)
         self.axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--',
@@ -64,10 +76,10 @@ class AScanFrame(ParentFrame):
 
         # if follow gate is active; plot them
         if self.data.follow_gate_on:
-            follow1_idx = self.data.peak_bin[3, 1, i, j]
-            follow2_idx = self.data.peak_bin[4, 1, i, j]
-            self.axis.axvline(self.data.time[follow1_idx], color='b', linewidth=1.0, picker=2)
-            self.axis.axvline(self.data.time[follow2_idx], color='g', linewidth=1.0, picker=2)
+            followL_idx = self.data.peak_bin[3, 1, i, j]
+            followR_idx = self.data.peak_bin[4, 1, i, j]
+            self.axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0, picker=2)
+            self.axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0, picker=2)
 
         self.axis.set_xlabel('Time (ps)')
         self.axis.set_ylabel('Amplitude')
@@ -115,12 +127,44 @@ class AScanFrame(ParentFrame):
             return
 
         line = event.artist
-        self.gate_held = event.artist
+        self.line_held = event.artist
         xdata = line.get_xdata()[0]
-        print(len(line.get_xdata()))
+
+        # convert xdata of point clicked on to  nearest time index
+        index = int(round(xdata * self.data.wave_length / self.data.time_length, 0))
+
+        # determine which gate was clicked on
+        diff = np.abs(index - self.data.gate[0][0])  # check front lead gate
+        diff1 = np.abs(index - self.data.gate[0][1])  # check back lead gate
+
+        if diff1 > diff:
+            self.gate_held = 0  # clicked on the lead lead gate
+        else:
+            self.gate_held = 1  # clicked on the back front gate
+            diff = diff1
+
+        # if follow gate is on we need to check the follow gates also
+        # use peak_bin to check with the follow gate location for this particular (i, j) pair
+        if self.data.follow_gate_on:
+            # difference between point clicked and lead follow gate
+            diff2 = np.abs(index - self.data.peak_bin[3, 1, self.i_index, self.j_index])
+
+            # back follow gate
+            diff3 = np.abs(index - self.data.peak_bin[4, 1, self.i_index, self.j_index])
+
+            # determine if either is closer than the front gate
+            if diff2 < diff:  # point clicked is closest to lead follow gate
+                self.gate_held = 2
+                diff = diff2
+            if diff3 < diff:  # point clicked is closest to back follow gate
+                self.gate_held = 3
+
+        print()
+        print('Gate Grabbed =', self.gate_held)
+        print()
 
         line.set_linewidth(2.0)  # make the line clicked on bold
-        self.figure_canvas.draw()
+        self.figure_canvas.draw()  # update plot
 
     def release_gate_handler(self, event):
         """
@@ -132,30 +176,57 @@ class AScanFrame(ParentFrame):
         if not self.is_initialized:
             return
 
-        # if the user does not click in the image, exit
+        # if the user has not yet clicked on a line, do nothing
+        if self.line_held is None:
+            return
+
+        # if the user does not release in the image, exit
         if event.xdata is None or event.ydata is None:
             return
 
-        self.gate_held.set_xdata([event.xdata, event.xdata])
-        self.gate_held.set_linewidth(1.0)  # return to normal width
-        self.figure_canvas.draw()
-
-        print('You released at', event.xdata, event.ydata)
-        # convert to index
+        # convert time value (xdata) to index
         index = int(round(event.xdata * self.data.wave_length / self.data.time_length, 0))
-        print('Index released at =', index)
+
         # ensure that the gate is inside of the bounds
         if index < 0:
             index = 0
         elif index > self.data.wave_length:
             index = self.data.wave_length
-        print(index)
-        self.data.gate[0][self.data.gate_index] = index
 
-        print('New gate value =', self.data.gate)
+        new_gate = copy.deepcopy(self.data.gate)
 
+        # if we are adjusting the lead gates, we just use the index as is
+        if self.gate_held == 0:  # front lead gate
+            new_gate[0][0] = index
+        elif self.gate_held == 1:  # back lead gate
+            new_gate[0][1] = index
+        # to adjust the follow gate, we need to use new index in relation to the old one found in
+        # peak_bin
+        elif self.gate_held == 2:  # front follow gate
+            new_gate[1][0] = self.data.gate[1][0] - \
+                             (self.data.peak_bin[3, 1, self.i_index, self.j_index] - index)
+        else:  # gate_held = 3; back follow gate
+            new_gate[1][1] = self.data.gate[1][1] - \
+                             (self.data.peak_bin[4, 1, self.i_index, self.j_index] - index)
+
+        # if follow gate is on, use the change gate method, which updates bin_range, and calls
+        # find_peaks function to update peak_bin
+        # if a value error is encountered it usually means that the left follow gate is greater
+        # than the last time length index
         if self.data.follow_gate_on:
-            self.data.find_peaks()  # call find peaks to update peak_bin if follow gate is on
+            try:
+                self.data.change_gate(new_gate)
+                self.line_held.set_xdata([event.xdata, event.xdata])
+                self.line_held.set_linewidth(1.0)  # return to normal width
+                self.figure_canvas.draw()
+            except ValueError:
+                # return to normal width only, don't update position
+                print('\nNeed to adjust follow gates first!\n')
+                self.line_held.set_linewidth(1.0)
+                self.figure_canvas.draw()
+                return
+        else:  # otherwise change the gate manually, this is faster
+            self.data.gate = copy.deepcopy(new_gate)
 
         # Generate the new C-Scan data based on the new gate location
         self.data.make_c_scan(self.data.signal_type)
@@ -163,3 +234,6 @@ class AScanFrame(ParentFrame):
         self.plot(self.i_index, self.j_index)  # update A-Scan to show new gate
         self.holder.raw_c_scan_frame.update()
         self.holder.interpolated_c_scan_frame.update()
+
+        # set line held to None, so user must first click on a line to move it
+        self.line_held = None
