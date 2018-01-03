@@ -44,13 +44,18 @@ class BScanFrame(ParentFrame):
         # show B-Scan for given (i, j) index, the THzData class handles the direction
         # (either horizontal or vertical)
 
+        if self.data.b_scan_dir == 'vertical':
+            title_string = 'Line at x = %0.2f' % self.data.x[j]
+        else:  # b_scan_dir is horizontal
+            title_string = 'Line at y = %0.2f' % self.data.y[i]
+
         self.axis.cla()
         self.data.make_b_scan(i, j)  # make the B-Scan image
         self.image = self.axis.imshow(self.data.b_scan, interpolation='none', cmap='seismic',
                                       extent=self.data.b_scan_extent)
         self.axis.set_xlabel('X Scan Location')
         self.axis.set_ylabel('Time (ps)')
-        self.axis.set_title('B-Scan Test', fontsize=16)
+        self.axis.set_title(title_string)
         self.axis.grid()
         self.figure_canvas.draw()
 
