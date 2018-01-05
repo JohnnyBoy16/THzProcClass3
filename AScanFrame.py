@@ -97,6 +97,14 @@ class AScanFrame(ParentFrame):
             self.axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0, picker=2)
             self.axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0, picker=2)
 
+        # if follow gate is on and using peak to peak voltage within follow gates plot the peak
+        # locations
+        if self.data.follow_gate_on and self.data.signal_type == 1:
+            pos_peak = self.data.peak_bin[0, 1, i, j]
+            neg_peak = self.data.peak_bin[1, 1, i, j]
+            self.axis.plot(self.data.time[pos_peak], self.data.waveform[i, j, pos_peak], 'b+')
+            self.axis.plot(self.data.time[neg_peak], self.data.waveform[i, j, neg_peak], 'gx')
+
         self.figure_canvas.draw()
 
     def motion_handler(self, event):
