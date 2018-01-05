@@ -12,6 +12,7 @@ class AScanFrame(ParentFrame):
     Displays the A-Scan of the last point clicked in the gray scale C-Scan image. Also contains
     the movable gates that update the C-Scan.
     """
+
     def __init__(self, holder, data, title=None):
         # TODO add functionality for frequency domain plots
 
@@ -64,27 +65,38 @@ class AScanFrame(ParentFrame):
         self.i_index = i
         self.j_index = j
 
-        title_string = 'Point Clicked: i=%d, j=%d' % (self.i_index, self.j_index)
+        xloc = self.data.x[self.j_index]
+        yloc = self.data.y[self.i_index]
+
+        title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
 
         self.axis.cla()
         self.axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
+        self.axis.set_xlabel('Time (ps)')
+        self.axis.set_ylabel('Amplitude')
+        self.axis.set_title(title_string, fontsize=14)
+        self.axis.grid()
 
+        # if the follow gate is off and signal type is 1, program uses pk to pk values across the
+        # entire waveform, so plotting gates is not necessary
+        if not self.data.follow_gate_on and self.data.signal_type == 1:
+            self.figure_canvas.draw()
+            return
+
+        # plot the lead gates
         self.axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--',
                           linewidth=1.0, picker=2)
         self.axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--',
                           linewidth=1.0, picker=2)
 
-        # if follow gate is active; plot them
-        if self.data.follow_gate_on:
+        # if follow gate is on and being used with current signal type; plot them
+        # signal type = 0 is to use the pk to pk voltage within the lead gates
+        if self.data.follow_gate_on and self.data.signal_type != 0:
             followL_idx = self.data.peak_bin[3, 1, i, j]
             followR_idx = self.data.peak_bin[4, 1, i, j]
             self.axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0, picker=2)
             self.axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0, picker=2)
 
-        self.axis.set_xlabel('Time (ps)')
-        self.axis.set_ylabel('Amplitude')
-        self.axis.set_title(title_string, fontsize=14)
-        self.axis.grid()
         self.figure_canvas.draw()
 
     def motion_handler(self, event):
@@ -204,10 +216,10 @@ class AScanFrame(ParentFrame):
         # peak_bin
         elif self.gate_held == 2:  # front follow gate
             new_gate[1][0] = self.data.gate[1][0] - \
-                             (self.data.peak_bin[3, 1, self.i_index, self.j_index] - index)
+                (self.data.peak_bin[3, 1, self.i_index, self.j_index] - index)
         else:  # gate_held = 3; back follow gate
             new_gate[1][1] = self.data.gate[1][1] - \
-                             (self.data.peak_bin[4, 1, self.i_index, self.j_index] - index)
+                (self.data.peak_bin[4, 1, self.i_index, self.j_index] - index)
 
         # if follow gate is on, use the change gate method, which updates bin_range, and calls
         # find_peaks function to update peak_bin

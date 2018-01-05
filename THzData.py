@@ -46,6 +46,8 @@ class THzData:
         self.b_scan_on = True
         self.b_scan_dir = 'horizontal'  # B Scan direction is usually horizontal by default
 
+        self.colorbar_dir = 'horizontal'
+
         # whether or not to correct for the excessive amplification on the edges of the
         # 300 ps waveforms
         self.amp_correction300_on = True

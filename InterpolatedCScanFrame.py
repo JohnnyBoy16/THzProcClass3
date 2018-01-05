@@ -11,6 +11,7 @@ class InterpolatedCScanFrame(ParentFrame):
     """
     # this plot is not interactive. Clicking in the image will not change the A-Scan. However,
     # the image will change when the gates are updated.
+
     def __init__(self, holder, data, title=None):
 
         if title is None:
@@ -47,7 +48,7 @@ class InterpolatedCScanFrame(ParentFrame):
                                       extent=self.data.c_scan_extent)
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
-        self.colorbar = plt.colorbar(self.image, orientation='vertical')
+        self.colorbar = plt.colorbar(self.image, orientation=self.data.colorbar_dir)
         self.axis.grid()
         self.figure_canvas.draw()
 
