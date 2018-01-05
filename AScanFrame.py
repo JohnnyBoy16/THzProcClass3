@@ -236,4 +236,5 @@ class AScanFrame(ParentFrame):
         self.holder.interpolated_c_scan_frame.update()
 
         # set line held to None, so user must first click on a line to move it
+        # updated to be not None in grab_gate_handler()
         self.line_held = None
