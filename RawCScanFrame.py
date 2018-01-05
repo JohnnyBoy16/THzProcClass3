@@ -60,8 +60,7 @@ class RawCScanFrame(ParentFrame):
 
     def plot(self):
         """
-        Plots the Raw C-Scan in the object figure windows after clearing what was in the image
-        previously
+        Plots the Raw C-Scan initially.
         """
         self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
                                       extent=self.data.c_scan_extent, picker=True, origin='upper')
