@@ -50,6 +50,7 @@ class AScanFrame(ParentFrame):
         self.figure_canvas.mpl_connect('pick_event', self.grab_gate_handler)
         self.figure_canvas.mpl_connect('button_release_event', self.release_gate_handler)
         self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event', self.gate_slider)
 
     def plot(self, i, j):
         """
@@ -249,3 +250,22 @@ class AScanFrame(ParentFrame):
 
         # set line held to None, so user must first click on a line to move it
         self.line_held = None
+
+    def gate_slider(self, event):
+        """
+        Moves and redraws the gate that has been grabbed
+        """
+        # if no point on the C-Scan has been clicked yet, do nothing and return
+        if not self.is_initialized:
+            return
+
+        # if the user has not yet clicked on a line, do nothing
+        if self.line_held is None:
+            return
+
+        # if the mouse leaves the image
+        if event.xdata is None or event.ydata is None:
+            return
+
+        self.line_held.set_xdata([event.xdata, event.xdata])
+        self.figure_canvas.draw()
