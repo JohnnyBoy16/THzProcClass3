@@ -1,4 +1,7 @@
+import os
+
 import numpy as np
+import pandas as pd
 
 
 def guassian_curve(x, a, b, c):
@@ -14,6 +17,28 @@ def guassian_curve(x, a, b, c):
     y = a * np.exp(-(x-b)**2 / (2*c**2))
 
     return y
+
+
+def read_reference_data(filename, basedir=None):
+    """
+    Reads in data from the reference txt file using the pandas library
+    :param filename: The filename of the reference file
+    :param basedir: The base directory of the filename. If `None`, filename is
+        assumed to be the full path to the file.
+    :return: optical_delay: An array of optical delay values (time array)
+             ref_amp: The amplitude of the reference signal at a given time
+    """
+
+    if basedir is not None:
+        filename = os.path.join(basedir, filename)
+    
+    # Read in the reference waveform and separate out the optical delay (time)
+    # and the reference amplitude
+    reference_data = pd.read_csv(filename, delimiter='\t')
+    optical_delay = reference_data['Optical Delay/ps'].values
+    ref_amp = reference_data['Raw_Data/a.u.'].values
+
+    return optical_delay, ref_amp
 
 
 def b_scan_slicer(data):
