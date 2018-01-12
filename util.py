@@ -16,12 +16,11 @@ def guassian_curve(x, a, b, c):
     return y
 
 
-def b_scan_slicer(data, save_loc):
+def b_scan_slicer(data):
     """
     Creates an image of each B-Scan slice and saves them to the directory specified by save_loc.
     The direction of the B-Scan is specified by the data.b_scan_dir; either horizontal or vertical.
     data: An instance of a THzData class
-    save_loc: string that specifies the directory to save the images to
     """
 
     if data.b_scan_dir == 'horizontal':
