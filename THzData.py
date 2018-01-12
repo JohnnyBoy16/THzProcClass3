@@ -68,15 +68,15 @@ class THzData:
         # the first axis, usually x, but can be turntable if rotational scan in performed.
         self.axis = None
 
-        self.delta_t = None  # the spacing between time values
+        self.dt = None  # the spacing between time values
         self.time = None  # array of time values that is used for plotting
         self.freq = None  # array of frequency values that is used for ploting
-        self.delta_f = None  # spacing between frequency values
+        self.df = None  # spacing between frequency values
         self.n_half_pulse = None  # the number of half pulses in the scan
         self.true_x_res = None  # the spacing between x points after Remap is called
         self.true_y_res = None  # the spacing between y points after Remap is called
-        self.delta_x = None  # the average difference between x data points
-        self.delta_y = None  # the average difference between y data points
+        self.dx = None  # the average difference between x data points
+        self.dy = None  # the average difference between y data points
         self.b_scan = None  # the B-Scan values
         self.tof_c_scan = None  # the time of flight of the front surface
 
@@ -154,7 +154,7 @@ class THzData:
 
         # run a check to make sure that the time length is actually 300
         if self.amp_correction300_on and abs(300 - self.wave_length) < self.TINY:
-            AmpCor300(self.AMP_CORRECTION_300_PAR, self.wave_length, self.delta_t, self.x_step,
+            AmpCor300(self.AMP_CORRECTION_300_PAR, self.wave_length, self.dt, self.x_step,
                       self.y_step, self.waveform)
 
         if self.follow_gate_on:
@@ -436,8 +436,8 @@ class THzData:
         """
         Centers the x and y coordinates such that (0, 0) is in the center of the image
         """
-        self.x -= ((self.x[0]-self.x[-1]) / 2)
-        self.y -= ((self.y[0]-self.y[-1]) / 2)
+        self.x -= ((self.x[0] + self.x[-1]) / 2)
+        self.y -= ((self.y[0] + self.y[-1]) / 2)
 
     def make_b_scan(self, yid, xid):
         """
@@ -530,7 +530,7 @@ class THzData:
         """
         print()
         print(' asn wave length =', self.wave_length, ' asn Time Length =', self.time_length,
-              ' delta_t =', self.delta_t, ' delta_f =', self.delta_f, ' scan type =',
+              ' delta_t =', self.dt, ' delta_f =', self.df, ' scan type =',
               self.scan_type)
 
         print('X min =', self.x_min, ' max =', self.x_max, 'Y min =', self.y_min, ' max=',
@@ -579,21 +579,21 @@ class THzData:
 
     def delta_calculator(self):
         """
-        Calculates delta_t, delta_f, n_half_pulse, and the time and frequency array that are used
+        Calculates dt, df, n_half_pulse, and the time and frequency array that are used
         for plotting.
         """
         # Note that len(freq) is wave_length/2 + 1. This is so it can be used with
         # numpy's rfft function. Thomas's THzProc code uses len(freq) as wave_length/2.
 
-        self.delta_t = self.time_length / (self.wave_length - 1)
-        self.delta_f = 1. / (self.wave_length * self.delta_t)
+        self.dt = self.time_length / (self.wave_length - 1)
+        self.df = 1. / (self.wave_length * self.dt)
         self.time = np.linspace(0., self.time_length, self.wave_length)
-        self.freq = np.linspace(0., (self.wave_length/2) * self.delta_f, self.wave_length//2+1)
-        self.n_half_pulse = int(self.HALF_PULSE / self.delta_t)
+        self.freq = np.linspace(0., (self.wave_length/2) * self.df, self.wave_length//2+1)
+        self.n_half_pulse = int(self.HALF_PULSE / self.dt)
         self.true_x_res = (self.x_max - self.x_min) / float(self.x_step - 1)
         self.true_y_res = (self.y_max - self.y_min) / float(self.y_step - 1)
-        self.delta_x = (self.x_max - self.x_min) / float(self.x_step)
-        self.delta_y = (self.y_max - self.y_min) / float(self.y_step)
+        self.dx = (self.x_max - self.x_min) / float(self.x_step)
+        self.dy = (self.y_max - self.y_min) / float(self.y_step)
 
 
 class DataFile(object):
