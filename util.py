@@ -31,7 +31,7 @@ def read_reference_data(filename, basedir=None):
 
     if basedir is not None:
         filename = os.path.join(basedir, filename)
-    
+
     # Read in the reference waveform and separate out the optical delay (time)
     # and the reference amplitude
     reference_data = pd.read_csv(filename, delimiter='\t')
