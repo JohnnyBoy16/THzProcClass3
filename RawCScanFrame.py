@@ -109,8 +109,8 @@ class RawCScanFrame(ParentFrame):
         xid = event.xdata
         yid = event.ydata
         if xid is not None and yid is not None:
-            x_index = int((xid - self.data.x_min) / self.data.delta_x)
-            y_index = int((yid - self.data.y_min) / self.data.delta_y)
+            x_index = int((xid - self.data.x_min) / self.data.dx)
+            y_index = int((yid - self.data.y_min) / self.data.dy)
             point_amp = self.data.c_scan[y_index, x_index]
             status_string = '(%.4f, %.4f), [%.4f]' % (xid, yid, point_amp)
             self.status_bar.SetStatusText(status_string)
@@ -129,8 +129,8 @@ class RawCScanFrame(ParentFrame):
         # print(self.figure_canvas.manager.toolmanager.active_toggle())
 
         if x_data and y_data is not None:  # make sure that the user clicks inside of the plot
-            self.i_index = int((y_data - self.data.y_min) / self.data.delta_y)
-            self.j_index = int((x_data - self.data.x_min) / self.data.delta_x)
+            self.i_index = int((y_data - self.data.y_min) / self.data.dy)
+            self.j_index = int((x_data - self.data.x_min) / self.data.dx)
 
             self.holder.a_scan_frame.plot(self.i_index, self.j_index)
             self.holder.b_scan_frame.plot(self.i_index, self.j_index)

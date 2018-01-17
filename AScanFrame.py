@@ -126,7 +126,7 @@ class AScanFrame(ParentFrame):
             elif xid > self.data.time_length:
                 t_index = self.data.wave_length - 1
             else:
-                t_index = int(round(xid / self.data.delta_t, 0))
+                t_index = int(round(xid / self.data.dt, 0))
 
             point_amp = self.data.waveform[self.i_index, self.j_index, t_index]
 
