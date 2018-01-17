@@ -34,6 +34,12 @@ class ParentFrame(wx.Frame):
         # the main sizer for the frame
         self.sizer = None
 
+        # the exit menu for the frames
+        self.exit_menu = None
+
+        # Start calling the methods
+        self.create_menu()
+        self.connect_menu()
         self.initialize_figure()
         self.initialize_toolbar()
         self.initialize_sizer()
@@ -71,3 +77,30 @@ class ParentFrame(wx.Frame):
         self.SetSizer(self.sizer)
         self.Fit()
         self.toolbar.Show()
+
+    def create_menu(self):
+        """
+        Creates a menu that includes a exit option to terminate the program
+        """
+        file_menu = wx.Menu()
+
+        self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit', 'Terminate the Program')
+        file_menu.Append(self.exit_menu)
+
+        menu_bar = wx.MenuBar()
+        menu_bar.Append(file_menu, "&File")
+
+        self.SetMenuBar(menu_bar)
+
+    def connect_menu(self):
+        """
+        Binds the menu options with their method handlers
+        """
+        self.Bind(wx.EVT_MENU, self.on_exit, self.exit_menu)
+
+    def on_exit(self, event):
+        """
+        Terminates the program when the user clicks the exit option from the file menu
+        """
+        print('You clicked the exit button!')
+        self.Destroy()
