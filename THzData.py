@@ -439,6 +439,15 @@ class THzData:
         self.x -= ((self.x[0] + self.x[-1]) / 2)
         self.y -= ((self.y[0] + self.y[-1]) / 2)
 
+    def adjust_coordinates(self, i, j):
+        """
+        Adjusts the coordinate system so that the point at index (i, j) is at (0, 0)
+        :param i: The index of the new center row
+        :param j: The index of the new center column
+        """
+        self.x -= self.x[j]
+        self.y -= self.y[i]
+
     def make_b_scan(self, yid, xid):
         """
         Generates the B-Scan based on the last cursor location clicked and whether b_scan_dir is
