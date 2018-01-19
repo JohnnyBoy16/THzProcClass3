@@ -135,10 +135,10 @@ class RawCScanFrame(ParentFrame):
             self.holder.a_scan_frame.plot(self.i_index, self.j_index)
             self.holder.b_scan_frame.plot(self.i_index, self.j_index)
 
-    def on_rescale_click(self, event):
+    def on_rescale_click(self):
         """
         Rescales the colorbar with the maximum and minimum values that are currently in the visible
-        plot bounday.
+        plot boundary.
         """
         # get the current x and y boundaries of the image
         # convert to array so they can be edited if necessary
