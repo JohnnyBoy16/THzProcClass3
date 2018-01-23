@@ -44,6 +44,8 @@ class ParentFrame(wx.Frame):
         self.initialize_toolbar()
         self.initialize_sizer()
 
+        # show the frame so the use doesn't have to call this manually
+        # in their driving script
         self.Show(True)
 
     def initialize_figure(self):
