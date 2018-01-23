@@ -152,7 +152,7 @@ class AScanFrame(ParentFrame):
         xdata = line.get_xdata()[0]
 
         # convert xdata of point clicked on to  nearest time index
-        index = int(round(xdata * self.data.wave_length / self.data.time_length, 0))
+        index = int(round(xdata / self.data.dt, 0))
 
         # determine which gate was clicked on
         diff = np.abs(index - self.data.gate[0][0])  # check front lead gate
@@ -206,7 +206,7 @@ class AScanFrame(ParentFrame):
             return
 
         # convert time value (xdata) to index
-        index = int(round(event.xdata * self.data.wave_length / self.data.time_length, 0))
+        index = int(round(event.xdata / self.data.dt, 0))
 
         # ensure that the gate is inside of the bounds
         if index < 0:
