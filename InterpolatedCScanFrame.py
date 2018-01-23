@@ -13,6 +13,13 @@ class InterpolatedCScanFrame(ParentFrame):
     # the image will change when the gates are updated.
 
     def __init__(self, holder, data, title=None):
+        """
+        Constructor method
+        :param holder: an instance of FrameHolder, used to link actions in
+                one frame to actions in another frame
+        :param data: an instance of the THzData class
+        :param title: the title for the frame
+        """
 
         if title is None:
             title = 'Interpolated C-Scan Test'

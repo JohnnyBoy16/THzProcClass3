@@ -8,8 +8,8 @@ class FrameHolder:
     """
     Class to hold the frame instances
     """
-    # this class allows each frame to cause actions in another by linking them through a holder
-    # class
+    # this class allows each frame to cause actions in another by linking them
+    # through a holder class
     def __init__(self, data):
 
         self.a_scan_frame = AScanFrame(self, data)
