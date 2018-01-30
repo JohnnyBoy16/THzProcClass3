@@ -77,7 +77,9 @@ class AScanFrame(ParentFrame):
         xloc = self.data.x[self.j_index]
         yloc = self.data.y[self.i_index]
 
-        title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
+        # title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
+        title_string = 'Location: i=%d, j=%d, Follow Gate: [%d, %d]' % (i, j,
+            self.data.gate[1][0], self.data.gate[1][1])
 
         self.axis.cla()
         self.axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
