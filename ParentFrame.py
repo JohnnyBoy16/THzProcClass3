@@ -44,7 +44,14 @@ class ParentFrame(wx.Frame):
         self.initialize_toolbar()
         self.initialize_sizer()
 
+        # show the frame so the use doesn't have to call this manually
+        # in their driving script
         self.Show(True)
+
+        # close the matplotlib image, otherwise if plt.show() is in the driving
+        # script, it will show the figure that are in the frame as a separate
+        # matplotlib figure
+        plt.close()
 
     def initialize_figure(self):
         """

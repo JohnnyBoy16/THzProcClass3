@@ -78,9 +78,8 @@ class AScanFrame(ParentFrame):
         yloc = self.data.y[self.i_index]
 
         # title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
-        title_string = 'Location: i=%d, j=%d, FollowGate: [%d, %d]' % (i, j, self.data.gate[1][0], 
-                                                                       self.data.gate[1][1])
-
+        title_string = 'Location: i=%d, j=%d, Follow Gate: [%d, %d]' % (i, j,
+            self.data.gate[1][0], self.data.gate[1][1])
         self.axis.cla()
         self.axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
         self.axis.set_xlabel('Time (ps)')
@@ -162,7 +161,7 @@ class AScanFrame(ParentFrame):
         xdata = line.get_xdata()[0]
 
         # convert xdata of point clicked on to  nearest time index
-        index = int(round(xdata * self.data.wave_length / self.data.time_length, 0))
+        index = int(round(xdata / self.data.dt, 0))
 
         # determine which gate was clicked on
         diff = np.abs(index - self.data.gate[0][0])  # check front lead gate

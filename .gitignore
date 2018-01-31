@@ -4,6 +4,7 @@ __pycache__
 
 # Ignore the driving / testing file because it changes a lot
 test.py
+test_ref_frame.py
 
 # Also ignore base THzProc, this will not be updated
 # is only around for reference

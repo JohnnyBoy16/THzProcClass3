@@ -1,6 +1,6 @@
 import pdb
+import time
 
-import wx
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -13,32 +13,39 @@ from ParentFrame import ParentFrame
 
 class ReferenceFrame(ParentFrame):
 
-    def __init__(self, filename, basedir='None', title=None):
+    def __init__(self, filename, basedir=None, title=None):
 
         if title is None:
             title = 'Reference Frame'
-
-        super().__init__(title)
 
         self.time_axis = None
         self.freq_axis = None
         self.line_held = None
         self.gate_held = None
 
+        super().__init__(title)
+
+        del self.axis  # remove single axis variable, don't need it
+
         self.time, self.time_amp = read_reference_data(filename, basedir)
 
+        # adjust time vector so it starts at zero, the THz has a global optical
+        # delay value that it uses when a waveform is saved as a txt file
         self.time -= self.time[0]
+
+        self.wavelength = len(self.time)
 
         self.dt = (self.time[-1] / (len(self.time)-1))
 
-        self.freq = np.linspace(0, 1/(self.dt*2), len(self.time)+1)
+        self.freq = np.linspace(0, 1/(self.dt*2), len(self.time)//2+1)
 
         self.freq_amp = np.fft.rfft(self.time_amp) * self.dt
 
-        self.gate = [0, len(self.time)]
+        self.gate = [0, len(self.time)-1]
 
         self.plot_time_waveform()
         self.plot_freq_waveform()
+        self.connect_events()
 
     # override from ParentFrame
     def initialize_figure(self):
@@ -49,12 +56,14 @@ class ReferenceFrame(ParentFrame):
         """
         # override the method in ParentFrame because we want to add two axes
         # to this plot
-
         self.figure = plt.figure()
         self.time_axis = self.figure.add_subplot(211)
         self.freq_axis = self.figure.add_subplot(212)
 
         self.freq_axis.set_xlim(0, 3)
+
+        self.time_axis.grid()
+        self.freq_axis.grid()
 
         self.figure.suptitle('Reference Waveform')
 
@@ -71,13 +80,15 @@ class ReferenceFrame(ParentFrame):
         Plots the time domain waveform and two movable gates
         """
 
-        lead_gate_time = self.time[-1] * 0.1
-        back_gate_time = self.time[-1] * 0.5
+        lead_gate_time = self.time[self.gate[0]]
+        back_gate_time = self.time[self.gate[1]]
 
         self.time_axis.plot(self.time, self.time_amp, 'r')
 
-        self.lead_gate = self.time_axis.axvline(lead_gate_time, color='k', linestyle='--', linewidth=1.0, picker=2)
-        self.back_gate = self.time_axis.axvline(back_gate_time, color='k', linestyle='--', linewidth=1.0, picker=2)
+        self.lead_gate = self.time_axis.axvline(lead_gate_time, color='k', linestyle='--',
+                                                linewidth=1.0, picker=2)
+        self.back_gate = self.time_axis.axvline(back_gate_time, color='k', linestyle='--',
+                                                linewidth=1.0, picker=2)
 
         self.figure_canvas.draw()
 
@@ -85,8 +96,14 @@ class ReferenceFrame(ParentFrame):
         """
         Plots the frequency domain waveform
         """
-        self.freq_axis.plot(self.freq, self.freq_amp, 'r')
+        self.freq_axis.plot(self.freq, np.abs(self.freq_amp), 'r')
         self.figure_canvas.draw()
+
+    def connect_events(self):
+        self.figure_canvas.mpl_connect('pick_event', self.grab_gate_handler)
+        self.figure_canvas.mpl_connect('button_release_event', self.release_gate_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event', self.slide_gate_handler)
 
     def motion_handler(self, event):
         """
@@ -118,12 +135,12 @@ class ReferenceFrame(ParentFrame):
         self.line_held = event.artist
         self.line_held.set_linewidth(2.0)
 
-        xdata = event.xdata
+        xdata = self.line_held.get_xdata()[0]
 
         # convert the time location to index
         index = int(round(xdata*len(self.time) / self.time[-1], 0))
 
-        self.gate_held = np.argmin(np.abs(self.gate - index))
+        self.gate_held = np.argmin(np.abs(np.asarray(self.gate) - index))
 
     def release_gate_handler(self, event):
         """
@@ -145,11 +162,27 @@ class ReferenceFrame(ParentFrame):
         # reset line handler
         self.line_held = None
 
-        xdata = event.xdata
-        index = int(round(event.xdata))
+        index = int(round(event.xdata / self.dt))
+
+        # handle what happens if the line is released outside of the given time
+        if index < 0:
+            index = 0
+        elif index > self.wavelength - 1:
+            index = self.wavelength - 1
+
         self.gate[self.gate_held] = index
 
-        self.freq_amp = np.fft.rfft(self.time_amp[self.gate[0]:self.gate[1]]) * self.dt
+        # create a new waveform to ensure FFT is take of time domain waveform
+        # with the correct number of data points
+        waveform = np.zeros_like(self.time_amp)
+        waveform[self.gate[0]:self.gate[1]] = self.time_amp[self.gate[0]:self.gate[1]]
+
+        self.freq_amp = np.fft.rfft(waveform) * self.dt
+
+        # remove the current line from the frequency axis
+        self.freq_axis.lines.pop(0)
+
+        self.plot_freq_waveform()
 
     def slide_gate_handler(self, event):
         """
