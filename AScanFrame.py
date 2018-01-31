@@ -77,7 +77,9 @@ class AScanFrame(ParentFrame):
         xloc = self.data.x[self.j_index]
         yloc = self.data.y[self.i_index]
 
-        title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
+        # title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
+        title_string = 'Location: i=%d, j=%d, FollowGate: [%d, %d]' % (i, j, self.data.gate[1][0], 
+                                                                       self.data.gate[1][1])
 
         self.axis.cla()
         self.axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
@@ -214,13 +216,13 @@ class AScanFrame(ParentFrame):
             return
 
         # convert time value (xdata) to index
-        index = int(round(event.xdata * self.data.wave_length / self.data.time_length, 0))
+        index = int(round(event.xdata * (self.data.wave_length-1) / self.data.time_length, 0))
 
         # ensure that the gate is inside of the bounds
         if index < 0:
             index = 0
-        elif index > self.data.wave_length:
-            index = self.data.wave_length
+        elif index > self.data.wave_length - 1 :
+            index = self.data.wave_length - 1
 
         new_gate = copy.deepcopy(self.data.gate)
 
