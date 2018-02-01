@@ -86,6 +86,9 @@ class THzData:
         # flags peaks (the FSE always and peaks in follow gate if follow gate is on)
         self.flag_peak_on = True
 
+        # incoming angle of the THz Beam (17.5 degrees) converted to radians
+        self.theta0 = 17.5 * np.pi / 180
+
         # CONSTANTS --------------------------------------------------------------------------------
 
         # 1 for the positive peak, 2 for the negative peak, prefer 1
