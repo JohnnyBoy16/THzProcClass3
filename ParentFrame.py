@@ -12,13 +12,22 @@ class ParentFrame(wx.Frame):
     """
     # This organizes the code that all frames have in common into one place
 
-    def __init__(self, title):
+    def __init__(self, title, subplot_grid=(1, 1)):
+        """
+        Constructor method.
+        :param title: The title for the Frame. This is the name that goes in
+            the very top Window's navigation bar.
+        :param subplot_grid: The axes grid layout the figure is to have.
+            Expected as (nrows, ncols)
+        """
         super().__init__(None, -1, title)
 
         # holds the figure object
         self.figure = None
 
-        # holds the axis object
+        # holds the axis object(s). If initialize_figure() is called with either
+        # nrows or ncols greater than 1. This will be an array with each axis
+        # instance in order
         self.axis = None
 
         # holds the FigureCanvas Object
@@ -40,7 +49,7 @@ class ParentFrame(wx.Frame):
         # Start calling the methods
         self.create_menu()
         self.connect_menu()
-        self.initialize_figure()
+        self.initialize_figure(subplot_grid[0], subplot_grid[1])
         self.initialize_toolbar()
         self.initialize_sizer()
 
@@ -51,14 +60,18 @@ class ParentFrame(wx.Frame):
         # close the matplotlib image, otherwise if plt.show() is in the driving
         # script, it will show the figure that are in the frame as a separate
         # matplotlib figure
-        plt.close()
+        # plt.close()
 
-    def initialize_figure(self):
+    def initialize_figure(self, nrows=1, ncols=1):
         """
-        Create a figure, adds an axis to that figure and initializes a figure canvas
+        Create a figure, adds an axis or axes to that figure and initializes a figure canvas. If
+        either nrows or ncols is greater than 1, axis attribute will be an array containing axis
+        instances.
+        :param nrows: The number of rows for the subplot. Default: 1
+        :param ncols: The number of columns for the subplot. Default: 1
         """
-        self.figure = plt.figure()
-        self.axis = self.figure.add_subplot(111)
+
+        self.figure, self.axis = plt.subplots(nrows, ncols)
 
         self.figure_canvas = FigureCanvas(self, -1, self.figure)
 

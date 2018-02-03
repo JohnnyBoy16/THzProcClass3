@@ -13,7 +13,7 @@ class AScanFrame(ParentFrame):
     the movable gates that update the C-Scan.
     """
 
-    def __init__(self, holder, data, title=None):
+    def __init__(self, holder, data, a_scan_only=True, title=None):
         """
         Constructor method
         :param holder: an instance of FrameHolder, used to link actions in
@@ -27,12 +27,28 @@ class AScanFrame(ParentFrame):
         if title is None:
             title = 'A-Scan Frame'
 
-        super().__init__(title)  # call parent class
+        if a_scan_only:
+            subplot_grid = (1, 1)  # only need one axis
+        else:
+            subplot_grid = (2, 1)  # need more than one axis
+
+        super().__init__(title, subplot_grid)  # call parent class
 
         self.holder = holder
 
         # The THz Data
         self.data = data
+
+        if a_scan_only:
+            self.time_axis = self.axis
+            self.freq_axis = None
+        else:
+            # declare and leave around in case user wants to look at frequency
+            # information later
+            self.time_axis = self.axis[0]
+            self.freq_axis = self.axis[1]
+
+        del self.axis  # free up memory for this class instance
 
         # the last i (row) and j (column) coordinates to be clicked on
         self.i_index = int
@@ -52,6 +68,9 @@ class AScanFrame(ParentFrame):
         # otherwise motion_handler() throws errors if nothing has been plotted yet
         self.is_initialized = False
 
+        # store whether or not frequency domain plots are visible
+        self.a_scan_only = a_scan_only
+
         self.connect_events()
 
     def connect_events(self):
@@ -70,52 +89,96 @@ class AScanFrame(ParentFrame):
         if not self.is_initialized:  # set value, so motion handler method can function
             self.is_initialized = True
 
-        # store the (i, j) that were clicked on
+        # store the (i, j) that were clicked on, this way the same line can be plotted when the
+        # gate is changed
         self.i_index = i
         self.j_index = j
+
+        self.time_plot(i, j)
+
+        if not self.a_scan_only:
+            self.freq_plot(i, j)
+
+        # leave draw() call here
+        self.figure_canvas.draw()
+
+    def time_plot(self, i, j):
 
         xloc = self.data.x[self.j_index]
         yloc = self.data.y[self.i_index]
 
+        # can have the title give the (x, y) location or (i, j) location
+        # this could also be updated to show both if one wanted to
         # title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
-        title_string = 'Location: i=%d, j=%d, Follow Gate: [%d, %d]' % (i, j,
-            self.data.gate[1][0], self.data.gate[1][1])
-        self.axis.cla()
-        self.axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
-        self.axis.set_xlabel('Time (ps)')
-        self.axis.set_ylabel('Amplitude')
-        self.axis.set_title(title_string, fontsize=14)
-        self.axis.grid()
+        title_string = 'Location: i=%d, j=%d, Follow Gate: [%d, %d]' % \
+            (i, j, self.data.gate[1][0], self.data.gate[1][1])
+
+        self.time_axis.cla()
+        self.time_axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
+        self.time_axis.set_xlabel('Time (ps)')
+        self.time_axis.set_ylabel('Amplitude')
+        self.time_axis.set_title(title_string, fontsize=14)
+        self.time_axis.grid()
 
         # if the follow gate is off and signal type is 1, program uses pk to pk values across the
         # entire waveform, so plotting gates is not necessary
         if not self.data.follow_gate_on and self.data.signal_type == 1:
-            self.figure_canvas.draw()
             return
 
         # plot the lead gates
-        self.axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--',
-                          linewidth=1.0, picker=2)
-        self.axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--',
-                          linewidth=1.0, picker=2)
+        self.time_axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--', 
+                               linewidth=1.0, picker=2)
+        self.time_axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--',
+                               linewidth=1.0, picker=2)
 
         # if follow gate is on and being used with current signal type; plot them
         # signal type = 0 is to use the pk to pk voltage within the lead gates
         if self.data.follow_gate_on and self.data.signal_type != 0:
             followL_idx = self.data.peak_bin[3, 1, i, j]
             followR_idx = self.data.peak_bin[4, 1, i, j]
-            self.axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0, picker=2)
-            self.axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0, picker=2)
+            self.time_axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0, picker=2)
+            self.time_axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0, picker=2)
 
         # if follow gate is on and using peak to peak voltage within follow gates plot the peak
         # locations
         if self.data.follow_gate_on and self.data.signal_type == 1:
             pos_peak = self.data.peak_bin[0, 1, i, j]
             neg_peak = self.data.peak_bin[1, 1, i, j]
-            self.axis.plot(self.data.time[pos_peak], self.data.waveform[i, j, pos_peak], 'b+')
-            self.axis.plot(self.data.time[neg_peak], self.data.waveform[i, j, neg_peak], 'gx')
+            self.time_axis.plot(self.data.time[pos_peak], self.data.waveform[i, j, pos_peak], 'b+')
+            self.time_axis.plot(self.data.time[neg_peak], self.data.waveform[i, j, neg_peak], 'gx')
 
-        self.figure_canvas.draw()
+    def freq_plot(self, i, j):
+        """
+        Plots the frequency domain information between the active time domain gates
+        :param i: The row
+        :param j: The column
+        """
+
+        # if follow gate is on, we want to use that dimension of peak bin
+        if self.data.follow_gate_on:
+            idx = 1
+        else:
+            idx = 0
+
+        if self.data.signal_type > 0:
+            left_gate = self.data.peak_bin[3, idx, i, j]
+            right_gate = self.data.peak_bin[4, idx, i, j]
+        else:
+            left_gate = self.data.gate[0][0]
+            right_gate = self.data.gate[0][1]
+
+        # create time domain waveform as zeros so it has the correct number of points
+        time_waveform = np.zeros(self.data.wave_length)
+        time_waveform[left_gate:right_gate] = self.data.waveform[i, j, left_gate:right_gate]
+
+        freq_waveform = np.fft.rfft(time_waveform) * self.data.dt
+
+        self.freq_axis.cla()
+        self.freq_axis.plot(self.data.freq, np.abs(freq_waveform), 'r')
+        self.freq_axis.set_xlabel('Frequency (THz)')
+        self.freq_axis.set_ylabel('Amplitude')
+        self.freq_axis.set_xlim(0, 3.5)
+        self.freq_axis.grid()
 
     def motion_handler(self, event):
         """
@@ -188,10 +251,6 @@ class AScanFrame(ParentFrame):
                 diff = diff2
             if diff3 < diff:  # point clicked is closest to back follow gate
                 self.gate_held = 3
-
-        print()
-        print('Gate Grabbed =', self.gate_held)
-        print()
 
         line.set_linewidth(2.0)  # make the line clicked on bold
         self.figure_canvas.draw()  # update plot
