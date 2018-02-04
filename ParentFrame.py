@@ -118,9 +118,10 @@ class ParentFrame(wx.Frame):
         """
         self.Bind(wx.EVT_MENU, self.on_exit, self.exit_menu)
 
-    def on_exit(self, event):
+    @staticmethod
+    def on_exit(event):
         """
         Terminates the program when the user clicks the exit option from the file menu
         """
-        print('You clicked the exit button!')
-        self.Destroy()
+        for window in wx.GetTopLevelWindows():
+            window.Destroy()
