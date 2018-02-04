@@ -1,8 +1,10 @@
 import pdb
 import copy
 
+import wx
 import numpy as np
 from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
 
 from ParentFrame import ParentFrame
 
@@ -61,6 +63,10 @@ class AScanFrame(ParentFrame):
         # 3 = back follow gate
         self.gate_held = None
 
+        # wx menu item that allows user to switch the A-Scan view to include
+        # frequency information or not
+        self.a_scan_view_menu = None
+
         # stores the line object that is clicked on when moving the gates
         self.line_held = None
 
@@ -78,6 +84,31 @@ class AScanFrame(ParentFrame):
         self.figure_canvas.mpl_connect('button_release_event', self.release_gate_handler)
         self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
         self.figure_canvas.mpl_connect('motion_notify_event', self.gate_slider)
+
+    def connect_menu(self):
+        """
+        Binds the menu options with their method handlers
+        """
+        self.Bind(wx.EVT_MENU, self.on_exit, self.exit_menu)
+        self.Bind(wx.EVT_MENU, self.switch_a_scan_view, self.a_scan_view_menu)
+
+    def create_menu(self):
+        """
+        Creates a menu that includes a exit option to terminate the program
+        """
+        file_menu = wx.Menu()
+
+        self.a_scan_view_menu = wx.MenuItem(file_menu, wx.ID_ANY, 'A-Scan On',
+                                            'Turn A-Scan on/off')
+        file_menu.Append(self.a_scan_view_menu)
+
+        self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit', 'Terminate the Program')
+        file_menu.Append(self.exit_menu)
+
+        menu_bar = wx.MenuBar()
+        menu_bar.Append(file_menu, "&File")
+
+        self.SetMenuBar(menu_bar)
 
     def plot(self, i, j):
         """
@@ -177,6 +208,33 @@ class AScanFrame(ParentFrame):
         self.freq_axis.set_ylabel('Amplitude')
         self.freq_axis.set_xlim(0, 3.5)
         self.freq_axis.grid()
+
+    def switch_a_scan_view(self, event):
+        """
+        Switches the A-Scan view between being A-Scan only or A-Scan and
+        frequency domain information
+        """
+
+        # switch boolean value
+        self.a_scan_only = not self.a_scan_only
+
+        # clear figure of all information, including axes
+        self.figure.clf()
+
+        if self.a_scan_only:
+            self.time_axis = self.figure.add_subplot(111)
+            self.freq_axis = None
+        else:
+            self.time_axis = self.figure.add_subplot(211)
+            self.freq_axis = self.figure.add_subplot(212)
+
+        if self.is_initialized:
+            # if a point has been clicked on in the C-Scan show the previous
+            # waveform
+            self.plot(self.i_index, self.j_index)
+        else:
+            # if not, update so that new axes view is visible
+            self.figure_canvas.draw()
 
     def motion_handler(self, event):
         """
