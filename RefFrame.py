@@ -18,14 +18,26 @@ class ReferenceFrame(ParentFrame):
         if title is None:
             title = 'Reference Frame'
 
-        self.time_axis = None
-        self.freq_axis = None
+        # self.axis will come back as an array with each subplot axis
+        super().__init__(title, (2, 1))
+
+        # the time domain axis
+        self.time_axis =  self.axis[0]
+        self.time_axis.grid(True)
+
+        # frequency domain axis
+        self.freq_axis = self.axis[1]
+        # set axis limits to useful frequency range
+        self.freq_axis.set_xlim(0, 3.5)
+        self.freq_axis.grid(True)
+
+        del self.axis  # clear up memory
+
+        # the line on the plot that is being held when the user clicks on it
         self.line_held = None
+
+        # the gate that the line being held represents
         self.gate_held = None
-
-        super().__init__(title)
-
-        del self.axis  # remove single axis variable, don't need it
 
         self.time, self.time_amp = read_reference_data(filename, basedir)
 
@@ -47,34 +59,6 @@ class ReferenceFrame(ParentFrame):
         self.plot_freq_waveform()
         self.connect_events()
 
-    # override from ParentFrame
-    def initialize_figure(self):
-        """
-        Creates a figure, adds two axes to that figure (one for time domain
-        information and one for frequency information). Also initializes a
-        figure canvas.
-        """
-        # override the method in ParentFrame because we want to add two axes
-        # to this plot
-        self.figure = plt.figure()
-        self.time_axis = self.figure.add_subplot(211)
-        self.freq_axis = self.figure.add_subplot(212)
-
-        self.freq_axis.set_xlim(0, 3)
-
-        self.time_axis.grid()
-        self.freq_axis.grid()
-
-        self.figure.suptitle('Reference Waveform')
-
-        self.time_axis.set_xlabel('Time (ps)')
-        self.time_axis.set_ylabel('Amplitude')
-
-        self.freq_axis.set_xlabel('Frequency (THz)')
-        self.freq_axis.set_ylabel('Amplitude')
-
-        self.figure_canvas = FigureCanvas(self, -1, self.figure)
-
     def plot_time_waveform(self):
         """
         Plots the time domain waveform and two movable gates
@@ -89,6 +73,8 @@ class ReferenceFrame(ParentFrame):
                                                 linewidth=1.0, picker=2)
         self.back_gate = self.time_axis.axvline(back_gate_time, color='k', linestyle='--',
                                                 linewidth=1.0, picker=2)
+
+        self.time_axis.set_title('Gate: [%d, %d]' % (self.gate[0], self.gate[1]))
 
         self.figure_canvas.draw()
 
@@ -180,7 +166,11 @@ class ReferenceFrame(ParentFrame):
         self.freq_amp = np.fft.rfft(waveform) * self.dt
 
         # remove the current line from the frequency axis
-        self.freq_axis.lines.pop(0)
+        old_line = self.freq_axis.lines.pop(0)
+        del old_line
+
+        # set the title on the time axis to show gate position
+        self.time_axis.set_title('Gate: [%d, %d]' % (self.gate[0], self.gate[1]))
 
         self.plot_freq_waveform()
 
@@ -197,3 +187,17 @@ class ReferenceFrame(ParentFrame):
 
         self.line_held.set_xdata([x, x])
         self.figure_canvas.draw()
+
+
+if __name__ == '__main__':
+
+    import wx
+
+    basedir = 'D:\\Work\\Refs\\ref 18OCT2017'
+    filename = '30ps waveform.txt'
+
+    app = wx.App(False)
+
+    frame = ReferenceFrame(filename, basedir)
+
+    app.MainLoop()
