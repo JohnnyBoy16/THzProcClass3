@@ -148,7 +148,7 @@ class AScanFrame(ParentFrame):
         self.time_axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
         self.time_axis.set_xlabel('Time (ps)')
         self.time_axis.set_ylabel('Amplitude')
-        self.time_axis.set_title(title_string, fontsize=14)
+        self.time_axis.set_title(title_string)
         self.time_axis.grid()
 
         # if the follow gate is off and signal type is 1, program uses pk to pk values across the
@@ -157,7 +157,7 @@ class AScanFrame(ParentFrame):
             return
 
         # plot the lead gates
-        self.time_axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--', 
+        self.time_axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--',
                                linewidth=1.0, picker=2)
         self.time_axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--',
                                linewidth=1.0, picker=2)
@@ -167,8 +167,10 @@ class AScanFrame(ParentFrame):
         if self.data.follow_gate_on and self.data.signal_type != 0:
             followL_idx = self.data.peak_bin[3, 1, i, j]
             followR_idx = self.data.peak_bin[4, 1, i, j]
-            self.time_axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0, picker=2)
-            self.time_axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0, picker=2)
+            self.time_axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0,
+                                   picker=2)
+            self.time_axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0,
+                                   picker=2)
 
         # if follow gate is on and using peak to peak voltage within follow gates plot the peak
         # locations
