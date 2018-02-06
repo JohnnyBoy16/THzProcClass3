@@ -22,7 +22,7 @@ class ReferenceFrame(ParentFrame):
         super().__init__(title, (2, 1))
 
         # the time domain axis
-        self.time_axis =  self.axis[0]
+        self.time_axis = self.axis[0]
         self.time_axis.grid(True)
 
         # frequency domain axis
@@ -190,14 +190,27 @@ class ReferenceFrame(ParentFrame):
 
 
 if __name__ == '__main__':
+    # if program is run as main, open a file dialog so the user can select the
+    # reference file that they wish to open
+
+    import sys
 
     import wx
 
-    basedir = 'D:\\Work\\Refs\\ref 18OCT2017'
-    filename = '30ps waveform.txt'
+    # must pass through self parameter to wx.FileDialog, but there is no class
+    # for self. Setting it to None seems to work though.
+    self = None
 
     app = wx.App(False)
 
-    frame = ReferenceFrame(filename, basedir)
+    with wx.FileDialog(self, 'Open Reference', wildcard='txt files (*.txt)|*.txt',
+                       style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dlg:
+
+        if dlg.ShowModal() == wx.ID_CANCEL:  # user clicks cancel
+            sys.exit(0)
+
+        full_path = dlg.GetPath()
+
+    frame = ReferenceFrame(full_path)
 
     app.MainLoop()
