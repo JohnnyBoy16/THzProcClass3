@@ -504,14 +504,14 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
 
         if npeak < 2:  # must have at least 2 peaks (including the lead peak to be followed)
             raise ValueError('Incorrect bin range setting!')
+
         for i in range(Ystep):
             for j in range(Xstep):
-                PeakBin[0, 0, i, j] = np.argmax(waveform[i, j, BinRange[0][0]:BinRange[0][1] + 1]) + \
-                                      BinRange[0][
-                                          0]  # important! need to add BinRange[0][0] to argmax result
+                # important! need to add BinRange[0][0] to argmax result
+                PeakBin[0, 0, i, j] = \
+                    np.argmax(waveform[i, j, BinRange[0][0]:BinRange[0][1] + 1]) + BinRange[0][0]
                 # check more carefully to see if FSE is smaller (due to defocusing, etc) than the largest peak in the gate
-                if PeakBin[0, 0, i, j] - nHalfPulse - BinRange[0][
-                    0] > 0:  # in case PeakBin[0,0,i,j] too early
+                if PeakBin[0, 0, i, j] - nHalfPulse - BinRange[0][0] > 0:  # in case PeakBin[0,0,i,j] too early
                     itmp = (np.where(
                         waveform[i, j, BinRange[0][0]:PeakBin[0, 0, i, j] - nHalfPulse] > fthres *
                         waveform[i, j, PeakBin[0, 0, i, j]]))
@@ -548,7 +548,8 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                         R2 = R
                     else:
                         LL = int(PulseLen * nHalfPulse)
-                        if LL < 1:  LL = 1  # 29DEC2015: to prevent zero-length gate
+                        if LL < 1:
+                            LL = 1  # 29DEC2015: to prevent zero-length gate
                         L2 = PeakBin[0, k, i, j] - LL
                         L2 = (L2 if L2 > L else L)
                         R2 = PeakBin[0, k, i, j] + LL
@@ -560,15 +561,16 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
 
         for i in range(Ystep):
             for j in range(Xstep):
-                PeakBin[0, 0, i, j] = np.argmax(waveform[i, j, BinRange[0][0]:BinRange[0][1] + 1]) + \
-                                      BinRange[0][0]
-                L2 = PeakBin[0, 0, i, j] - nHalfPulse;
+                PeakBin[0, 0, i, j] = \
+                    np.argmax(waveform[i, j, BinRange[0][0]:BinRange[0][1] + 1]) + BinRange[0][0]
+
+                L2 = PeakBin[0, 0, i, j] - nHalfPulse
                 L2 = (L2 if L2 > BinRange[0][0] else BinRange[0][0])
-                R2 = PeakBin[0, 0, i, j] + nHalfPulse;
+                R2 = PeakBin[0, 0, i, j] + nHalfPulse
                 R2 = (R2 if R2 <= BinRange[0][1] else BinRange[0][1])
                 PeakBin[1, 0, i, j] = np.argmin(waveform[i, j, L2:R2]) + L2
                 PeakBin[2, 0, i, j] = (PeakBin[0, 0, i, j] + PeakBin[1, 0, i, j]) / 2
-                PeakBin[3, 0, i, j] = BinRange[0][0];
+                PeakBin[3, 0, i, j] = BinRange[0][0]
                 PeakBin[4, 0, i, j] = BinRange[0][1]
 
     return PeakBin
