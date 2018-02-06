@@ -106,7 +106,7 @@ class THzData:
         self.AMP_CORRECTION_300_PAR = [0., 35., 5.0, 1., 240., 300., 1., 4.5, 4.]
 
         self.X_CORRECTION_TOLERANCE = 0.1
-        self.PULSE_LENGTH = 3.0
+        self.PULSE_LENGTH = -1  # set to be negative so negative peak is always within follow gate
 
         # difference that a point is allowed to deviate (as a ratio with respect to resolution)
         # from its desired coordinate
