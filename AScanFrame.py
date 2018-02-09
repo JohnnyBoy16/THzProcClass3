@@ -67,6 +67,10 @@ class AScanFrame(ParentFrame):
         # frequency information or not
         self.a_scan_view_menu = None
 
+        # wx menu item that allows the user to switch between using the (i, j)
+        # or (x, y) coordinate system
+        self.location_view_menu = None
+
         # stores the line object that is clicked on when moving the gates
         self.line_held = None
 
@@ -77,6 +81,11 @@ class AScanFrame(ParentFrame):
         # store whether or not frequency domain plots are visible
         self.a_scan_only = a_scan_only
 
+        # store whether or not we are showing (i, j) or (x, y) indexing
+        # default to False because we generally want to see (x, y) coords to
+        # match with physical location instead of index
+        self.ij_indexing = False
+
         self.connect_events()
 
     def connect_events(self):
@@ -85,30 +94,39 @@ class AScanFrame(ParentFrame):
         self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
         self.figure_canvas.mpl_connect('motion_notify_event', self.gate_slider)
 
+    # Override from ParentFrame
     def connect_menu(self):
         """
         Binds the menu options with their method handlers
         """
         self.Bind(wx.EVT_MENU, self.on_exit, self.exit_menu)
         self.Bind(wx.EVT_MENU, self.switch_a_scan_view, self.a_scan_view_menu)
+        self.Bind(wx.EVT_MENU, self.change_index_system, self.location_view_menu)
 
+    # Override from ParentFrame
     def create_menu(self):
         """
         Creates a menu that includes a exit option to terminate the program
         """
         file_menu = wx.Menu()
+        options_menu = wx.Menu()
 
-        self.a_scan_view_menu = wx.MenuItem(file_menu, wx.ID_ANY, 'A-Scan On',
+        self.a_scan_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'A-Scan On',
                                             'Turn A-Scan on/off')
-        file_menu.Append(self.a_scan_view_menu)
+        options_menu.Append(self.a_scan_view_menu)
+
+        self.location_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Indexing Option')
+        options_menu.Append(self.location_view_menu)
 
         self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit', 'Terminate the Program')
         file_menu.Append(self.exit_menu)
 
         menu_bar = wx.MenuBar()
-        menu_bar.Append(file_menu, "&File")
+        menu_bar.Append(file_menu, '&File')
+        menu_bar.Append(options_menu, '&Options')
 
         self.SetMenuBar(menu_bar)
+        self.Fit()
 
     def plot(self, i, j):
         """
@@ -140,9 +158,13 @@ class AScanFrame(ParentFrame):
 
         # can have the title give the (x, y) location or (i, j) location
         # this could also be updated to show both if one wanted to
-        # title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
-        title_string = 'Location: i=%d, j=%d, Follow Gate: [%d, %d]' % \
-            (i, j, self.data.gate[1][0], self.data.gate[1][1])
+        if self.ij_indexing:
+            title_string = 'Location: i=%d, j=%d, Follow Gate: [%d, %d]' % \
+                           (i, j, self.data.gate[1][0], self.data.gate[1][1])
+        else:
+            title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
+
+        title_string += ', Follow Gate: [%d %d]' % (self.data.gate[1][0], self.data.gate[1][1])
 
         self.time_axis.cla()
         self.time_axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
@@ -239,6 +261,18 @@ class AScanFrame(ParentFrame):
         else:
             # if not, update so that new axes view is visible
             self.figure_canvas.draw()
+
+    def change_index_system(self, event):
+        """
+        Controls whether the title in the A-Scan frame displays (i, j) or (x, y)
+        location.
+        :param event: a wxPython event
+        """
+        # only thing we have to do is change the state of the value and then
+        # replot
+        self.ij_indexing = not self.ij_indexing
+
+        self.plot(self.i_index, self.j_index)
 
     def motion_handler(self, event):
         """
