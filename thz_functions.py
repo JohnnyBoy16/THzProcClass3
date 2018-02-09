@@ -539,7 +539,7 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                     if R < L:  # corrected 15SEP2013; right follow gate is less than left followgate
                         raise ValueError("Incorrect right gate setting in gate", k)
                     elif R > wavlen:
-                        R = wavlen
+                        R = wavlen - 1  # force right gate to be a valid index
                     PeakBin[3, k, i, j] = L
                     PeakBin[4, k, i, j] = R
                     PeakBin[0, k, i, j] = np.argmax(waveform[i, j, L:R]) + L
