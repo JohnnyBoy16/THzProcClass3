@@ -1,24 +1,36 @@
 import pdb
-import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.lines import Line2D
 from util import read_reference_data
 
-from ParentFrame import ParentFrame
+from THzProcClass.ParentFrame import ParentFrame
 
 
 class ReferenceFrame(ParentFrame):
+    """
+    This class allows the user to open a reference waveform from a .txt file
+    and adjust two gates in the time domain and view the resulting frequency
+    domain waveform.
+    """
 
     def __init__(self, filename, basedir=None, title=None):
+        """
+        Constructor method
+        :param filename: Either the name of the file or the full path to the
+            file that is to be opened.
+        :param basedir: The path to the base directory. If not given, filename
+            is assumed to be the full path to the file.
+        :param title: The title of the frame. If not given, it will be
+            'Reference Frame'
+        """
 
         if title is None:
             title = 'Reference Frame'
 
-        # self.axis will come back as an array with each subplot axis
+        # self.axis will come back as an array with each subplot axis since
+        # we are passing through a tuple that is NOT (1, 1)
         super().__init__(title, (2, 1))
 
         # the time domain axis
@@ -39,6 +51,13 @@ class ReferenceFrame(ParentFrame):
         # the gate that the line being held represents
         self.gate_held = None
 
+        # the line that represents the lead gate
+        self.lead_gate = None
+
+        # the line that represents the back gate
+        self.back_gate = None
+
+        # start calculations and driving methods
         self.time, self.time_amp = read_reference_data(filename, basedir)
 
         # adjust time vector so it starts at zero, the THz has a global optical

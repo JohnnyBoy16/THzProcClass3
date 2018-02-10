@@ -4,9 +4,8 @@ import copy
 import wx
 import numpy as np
 from matplotlib.lines import Line2D
-import matplotlib.pyplot as plt
 
-from ParentFrame import ParentFrame
+from THzProcClass.ParentFrame import ParentFrame
 
 
 class AScanFrame(ParentFrame):
@@ -23,8 +22,6 @@ class AScanFrame(ParentFrame):
         :param data: an instance of the THzData class
         :param title: the title for the frame
         """
-
-        # TODO add functionality for frequency domain plots
 
         if title is None:
             title = 'A-Scan Frame'
@@ -111,7 +108,7 @@ class AScanFrame(ParentFrame):
         file_menu = wx.Menu()
         options_menu = wx.Menu()
 
-        self.a_scan_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'A-Scan On',
+        self.a_scan_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Toggle A-Scan Only',
                                             'Turn A-Scan on/off')
         options_menu.Append(self.a_scan_view_menu)
 
@@ -159,12 +156,11 @@ class AScanFrame(ParentFrame):
         # can have the title give the (x, y) location or (i, j) location
         # this could also be updated to show both if one wanted to
         if self.ij_indexing:
-            title_string = 'Location: i=%d, j=%d, Follow Gate: [%d, %d]' % \
-                           (i, j, self.data.gate[1][0], self.data.gate[1][1])
+            title_string = 'Location: i=%d, j=%d' % (i, j)
         else:
             title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
 
-        title_string += ', Follow Gate: [%d %d]' % (self.data.gate[1][0], self.data.gate[1][1])
+        title_string += ', Follow Gate: [%d, %d]' % (self.data.gate[1][0], self.data.gate[1][1])
 
         self.time_axis.cla()
         self.time_axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
