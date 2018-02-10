@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import wx
 import numpy as np
 
-from ParentFrame import ParentFrame
+from THzProcClass.ParentFrame import ParentFrame
 
 
 class RawCScanFrame(ParentFrame):
@@ -41,28 +41,26 @@ class RawCScanFrame(ParentFrame):
         self.i_index = None
         self.j_index = None
 
-        self.rescale_button = wx.Button(self, -1, label='Rescale Colorbar')
+        self.rescale_colorbar_menu = None
 
-        self.modify_sizer()
-        self.bind_controls()
-        self.plot()  # make sure to plot the C-Scan to start out with
+        self.modify_menu()
         self.connect_events()
+        self.plot()  # make sure to plot the C-Scan to start out with
 
-    def modify_sizer(self):
+    def modify_menu(self):
         """
-        Adds a button to rescale the colorbar with the maximum and minimum values in the C-Scan
-        image after it has been zoomed in or out using the magnify tool from the matplotlib
-        toolbar.
+        Adds an Options menu to the menu system. The options menu will include
+        and options to rescale the colorbar
         """
-        # TODO: in the future this should be moved to the start GUI if I get around to making that
+        options_menu = wx.Menu()
 
-        # create a new sizer to display the button
-        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.rescale_colorbar_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Rescale Colorbar',
+                                                 'Rescale colorbar with current image')
 
-        button_sizer.Add(self.rescale_button)
+        options_menu.Append(self.rescale_colorbar_menu)
 
-        self.sizer.Add(button_sizer)
-        self.SetSizer(self.sizer)
+        self.menu_bar.Append(options_menu, '&Options')
+        self.SetMenuBar(self.menu_bar)
         self.Fit()
 
     def plot(self):
@@ -97,16 +95,14 @@ class RawCScanFrame(ParentFrame):
 
     def connect_events(self):
         """
-        Binds the events to methods
+        Binds the matplotlib and wx events to their method handlers
         """
+        # matplotlib events
         self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
         self.figure_canvas.mpl_connect('button_press_event', self.select_point)
 
-    def bind_controls(self):
-        """
-        Binds controls with their method handlers
-        """
-        self.rescale_button.Bind(wx.EVT_BUTTON, self.on_rescale_click)
+        # wx events
+        self.Bind(wx.EVT_MENU,  self.on_rescale_click, self.rescale_colorbar_menu)
 
     def motion_handler(self, event):
         """
@@ -142,10 +138,10 @@ class RawCScanFrame(ParentFrame):
             self.holder.a_scan_frame.plot(self.i_index, self.j_index)
             self.holder.b_scan_frame.plot(self.i_index, self.j_index)
 
-    def on_rescale_click(self):
+    def on_rescale_click(self, event):
         """
-        Rescales the colorbar with the maximum and minimum values that are currently in the visible
-        plot boundary.
+        Rescales the colorbar with the maximum and minimum values that are
+        currently in the visible plot boundary.
         """
         # get the current x and y boundaries of the image
         # convert to array so they can be edited if necessary
@@ -171,7 +167,8 @@ class RawCScanFrame(ParentFrame):
         i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
         i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
 
-        area = self.data.c_scan[i0:i1+1, j0:j1+1]  # want to include the bounds in calculation
+        # want to include the bounds in calculation, so add 1 to be inclusive
+        area = self.data.c_scan[i0:i1+1, j0:j1+1]
 
         # resent vmin and vmax to be the min and max of area inside of plot bounds
         self.image.set_clim(vmin=area.min(), vmax=area.max())
