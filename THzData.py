@@ -3,7 +3,7 @@ import os
 import copy
 import struct
 import pdb
-from thz_functions import ReMap, AmpCor300, FindPeaks
+from thz_functions import AmpCor300, FindPeaks, ReMap
 
 # THINGS THAT STILL HAVE TO BE IMPLEMENTED
 # Depth Map
@@ -406,7 +406,9 @@ class THzData:
     def resize(self, x0, x1, y0, y1):
         """
         Resizes the data in the bounds between x0, x1, y0, and y1. Should be used to remove the
-        edges from the data if it was over scanned
+        edges from the data if it was over scanned. This method creates attributes waveform_small,
+        c_scan_small, and it time of flight c-scan has already been calculated it also creates
+        tof_c_scan_small.
         :param x0: The smallest x value in the new image
         :param x1: The largest x value in the new image
         :param y0: The smallest y value in the new image
@@ -425,9 +427,7 @@ class THzData:
 
         self.waveform_small = self.waveform[i0:i1, j0:j1, :]
 
-        max_amp = np.amax(self.waveform_small[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
-        min_amp = np.amin(self.waveform_small[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
-        self.c_scan_small = max_amp - min_amp
+        self.c_scan_small = self.c_scan[i0:i1, j0:j1]
 
         self.small_extent = (self.x_small.min(), self.x_small.max(), self.y_small.max(),
                              self.y_small.min())
