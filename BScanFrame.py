@@ -1,8 +1,8 @@
 import pdb
 
-import numpy as np
+import wx
 
-from ParentFrame import ParentFrame
+from THzProcClass.ParentFrame import ParentFrame
 
 
 class BScanFrame(ParentFrame):
@@ -29,6 +29,9 @@ class BScanFrame(ParentFrame):
         # the THz data
         self.data = data
 
+        # whether or not a point in the C-Scan has been clicked on yet
+        self.is_initialized = False
+
         # contains the B-Scan picture
         self.image = None
 
@@ -36,11 +39,39 @@ class BScanFrame(ParentFrame):
         self.i_index = None
         self.j_index = None
 
+        # menu item to toggle the B-Scan orientation between vertical and
+        # horizontal
+        self.toggle_orientation_menu = None
+
+        self.modify_menu()
+        self.connect_events()
+
+    def modify_menu(self):
+        """
+        Modifies the menu to add an options menu that includes an item to switch
+        the B-Scan orientation
+        """
+        options_menu = wx.Menu()
+
+        status_string = 'Toggles orientation between horizontal and vertical'
+        self.toggle_orientation_menu = wx.MenuItem(options_menu, wx.ID_ANY,
+                                                   'Switch Orientation', status_string)
+
+        options_menu.Append(self.toggle_orientation_menu)
+
+        self.menu_bar.Append(options_menu, '&Options')
+        self.SetMenuBar(self.menu_bar)
+        self.Fit()
+
     def connect_events(self):
         """
         Connects events to their appropriate method
         """
+        # matplotlib events
         self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
+
+        # wx events
+        self.Bind(wx.EVT_MENU, self.switch_orientation, self.toggle_orientation_menu)
 
     def plot(self, i, j):
         """
@@ -50,6 +81,13 @@ class BScanFrame(ParentFrame):
         """
         # show B-Scan for given (i, j) index, the THzData class handles the direction
         # (either horizontal or vertical)
+
+        if not self.is_initialized:
+            self.is_initialized = True
+
+        # store the last points that were clicked on in the Raw C-Scan Frame
+        self.i_index = i
+        self.j_index = j
 
         if self.data.b_scan_dir == 'vertical':
             title_string = 'Line at x = %0.2f' % self.data.x[j]
@@ -66,18 +104,41 @@ class BScanFrame(ParentFrame):
         self.axis.grid()
         self.figure_canvas.draw()
 
+    def switch_orientation(self, event):
+        """
+        Switches the B-Scan orientation
+        """
+        if self.data.b_scan_dir == 'horizontal':
+            self.data.b_scan_dir = 'vertical'
+        else:  # data.b_scan_dir should be vertical, so set it to horizontal
+            self.data.b_scan_dir = 'horizontal'
+
+        # if a point in the C-Scan has not been clicked on yet, we don't want
+        # to do anything other than change the direction string above
+        if not self.is_initialized:
+            return
+
+        # make the new B-Scan in THzProc at the location specified
+        self.data.make_b_scan(self.i_index, self.j_index)
+
+        # plot the new B-Scan
+        self.plot(self.i_index, self.j_index)
+
     def motion_handler(self, event):
         """
         Prints the current (x,y) values that the mouse is over to the status bar along with the
         pixel value at that (x,y) location.
         """
+        # if the event is not in the axis
+        if not event.inaxes:
+            self.status_bar.SetStatusText('')
+            return
+
         xid = event.xdata
         yid = event.ydata
-        if xid is not None and yid is not None:
-            x_index = int((xid - self.data.x_min) / self.data.dx)
-            y_index = int((yid - self.data.y_min) / self.data.dy)
-            point_amp = self.data.c_scan[y_index, x_index]
-            status_string = '(%.6f, %.6f), [%.6f]' % (xid, yid, point_amp)
-            self.status_bar.SetStatusText(status_string)
-        else:
-            self.status_bar.SetStatusText('')
+
+        x_index = int((xid - self.data.x_min) / self.data.dx)
+        y_index = int((yid - self.data.y_min) / self.data.dy)
+        point_amp = self.data.b_scan[y_index, x_index]
+        status_string = '(%.4f, %.4f), [%.4f]' % (xid, yid, point_amp)
+        self.status_bar.SetStatusText(status_string)
