@@ -43,6 +43,10 @@ class ParentFrame(wx.Frame):
         # the main sizer for the frame
         self.sizer = None
 
+        # the menu bar the contains the file menu. Make this an instance
+        # attribute so it can be modified by child classes
+        self.menu_bar = None
+
         # the exit menu for the frames
         self.exit_menu = None
 
@@ -60,7 +64,6 @@ class ParentFrame(wx.Frame):
         # close the matplotlib image, otherwise if plt.show() is in the driving
         # script, it will show the figure that are in the frame as a separate
         # matplotlib figure
-        # plt.close()
 
     def initialize_figure(self, nrows=1, ncols=1):
         """
@@ -107,10 +110,10 @@ class ParentFrame(wx.Frame):
         self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit', 'Terminate the Program')
         file_menu.Append(self.exit_menu)
 
-        menu_bar = wx.MenuBar()
-        menu_bar.Append(file_menu, "&File")
+        self.menu_bar = wx.MenuBar()
+        self.menu_bar.Append(file_menu, "&File")
 
-        self.SetMenuBar(menu_bar)
+        self.SetMenuBar(self.menu_bar)
 
     def connect_menu(self):
         """
@@ -125,3 +128,5 @@ class ParentFrame(wx.Frame):
         """
         for window in wx.GetTopLevelWindows():
             window.Destroy()
+
+
