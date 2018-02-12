@@ -3,7 +3,8 @@ import os
 import copy
 import struct
 import pdb
-from thz_functions import AmpCor300, FindPeaks, ReMap
+
+from THzProc.thz_functions import AmpCor300, FindPeaks, ReMap
 
 # THINGS THAT STILL HAVE TO BE IMPLEMENTED
 # Depth Map
