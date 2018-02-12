@@ -91,14 +91,16 @@ class BScanFrame(ParentFrame):
 
         if self.data.b_scan_dir == 'vertical':
             title_string = 'Line at x = %0.2f' % self.data.x[j]
+            xlabel_string = 'Y Scan Location (mm)'
         else:  # b_scan_dir is horizontal
             title_string = 'Line at y = %0.2f' % self.data.y[i]
+            xlabel_string = 'X Scan Location (mm)'
 
         self.axis.cla()
         self.data.make_b_scan(i, j)  # make the B-Scan image
         self.image = self.axis.imshow(self.data.b_scan, interpolation='none', cmap='seismic',
                                       extent=self.data.b_scan_extent)
-        self.axis.set_xlabel('X Scan Location')
+        self.axis.set_xlabel(xlabel_string)
         self.axis.set_ylabel('Time (ps)')
         self.axis.set_title(title_string)
         self.axis.grid()
