@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import wx
 import numpy as np
 
-from THzProcClass.ParentFrame import ParentFrame
+from THzProc.ParentFrame import ParentFrame
 
 
 class RawCScanFrame(ParentFrame):

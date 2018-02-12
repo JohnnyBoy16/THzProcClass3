@@ -2,7 +2,7 @@ import pdb
 
 import wx
 
-from THzProcClass.ParentFrame import ParentFrame
+from THzProc.ParentFrame import ParentFrame
 
 
 class BScanFrame(ParentFrame):

@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.lines import Line2D
 from util import read_reference_data
 
-from THzProcClass.ParentFrame import ParentFrame
+from THzProc.ParentFrame import ParentFrame
 
 
 class ReferenceFrame(ParentFrame):

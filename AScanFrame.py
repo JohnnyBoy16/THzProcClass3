@@ -5,7 +5,7 @@ import wx
 import numpy as np
 from matplotlib.lines import Line2D
 
-from THzProcClass.ParentFrame import ParentFrame
+from THzProc.ParentFrame import ParentFrame
 
 
 class AScanFrame(ParentFrame):

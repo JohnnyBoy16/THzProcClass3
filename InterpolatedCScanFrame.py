@@ -2,7 +2,7 @@ import pdb
 
 import matplotlib.pyplot as plt
 
-from THzProcClass.ParentFrame import ParentFrame
+from THzProc.ParentFrame import ParentFrame
 
 
 class InterpolatedCScanFrame(ParentFrame):

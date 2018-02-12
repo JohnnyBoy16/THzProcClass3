@@ -1,7 +1,7 @@
-from THzProcClass.AScanFrame import AScanFrame
-from THzProcClass.RawCScanFrame import RawCScanFrame
-from THzProcClass.BScanFrame import BScanFrame
-from THzProcClass.InterpolatedCScanFrame import InterpolatedCScanFrame
+from THzProc.AScanFrame import AScanFrame
+from THzProc.RawCScanFrame import RawCScanFrame
+from THzProc.BScanFrame import BScanFrame
+from THzProc.InterpolatedCScanFrame import InterpolatedCScanFrame
 
 
 class FrameHolder:
