@@ -129,6 +129,11 @@ class BScanFrame(ParentFrame):
         Prints the current (x,y) values that the mouse is over to the status bar along with the
         pixel value at that (x,y) location.
         """
+        # if now point in the C-Scan has been clicked on yet there is no
+        # information to display on the status bar
+        if not self.is_initialized:
+            return
+
         # if the event is not in the axis
         if not event.inaxes:
             self.status_bar.SetStatusText('')
