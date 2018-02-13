@@ -90,6 +90,11 @@ class THzData:
         # incoming angle of the THz Beam (17.5 degrees) converted to radians
         self.theta0 = 17.5 * np.pi / 180
 
+        # whether or not a call to resize() has been issued. This attribute is
+        # for other functions that base their decisions on whether of not the
+        # resize method has been called
+        self.has_been_resized = False
+
         # CONSTANTS --------------------------------------------------------------------------------
 
         # 1 for the positive peak, 2 for the negative peak, prefer 1
@@ -318,6 +323,7 @@ class THzData:
         beam profile
         :param
         """
+        # this method is debateably functional
         from scipy.interpolate import interp1d
         from scipy.optimize import curve_fit
         import util
@@ -404,7 +410,7 @@ class THzData:
 
         return c_scan_corrected, height
 
-    def resize(self, x0, x1, y0, y1):
+    def resize(self, x0, x1, y0, y1, return_indices=False):
         """
         Resizes the data in the bounds between x0, x1, y0, and y1. Should be used to remove the
         edges from the data if it was over scanned. This method creates attributes waveform_small,
@@ -414,7 +420,12 @@ class THzData:
         :param x1: The largest x value in the new image
         :param y0: The smallest y value in the new image
         :param y1: The largest y value in the new image
+        :param return_indecices: If passed as True will return the indices that were used to
+            generate the small C-Scan as (i0, i1, j0, j1). Where i0 is the top most index. i1 is
+            bottom most index. j0 is the right most index, and j1 is the left most.
         """
+
+        self.has_been_resized = True
 
         j0 = np.argmin(np.abs(self.x - x0))
         j1 = np.argmin(np.abs(self.x - x1))
@@ -435,6 +446,9 @@ class THzData:
 
         if self.tof_c_scan is not None:
             self.tof_c_scan_small = self.tof_c_scan[i0:i1, j0:j1]
+
+        if return_indices:
+            return (i0, i1, j0, j1)
 
     def center_coordinates(self):
         """
