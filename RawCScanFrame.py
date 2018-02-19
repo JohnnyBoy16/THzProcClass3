@@ -53,6 +53,8 @@ class RawCScanFrame(ParentFrame):
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
 
+        plt.close(self.figure)
+
     def modify_menu(self):
         """
         Adds an Options menu to the menu system. The options menu will include

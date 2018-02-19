@@ -3,6 +3,7 @@ import copy
 
 import wx
 import numpy as np
+import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 from THzProc.ParentFrame import ParentFrame
@@ -84,6 +85,8 @@ class AScanFrame(ParentFrame):
         self.ij_indexing = False
 
         self.connect_events()
+
+        plt.close(self.figure)
 
     def connect_events(self):
         self.figure_canvas.mpl_connect('pick_event', self.grab_gate_handler)

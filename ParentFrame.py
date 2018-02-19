@@ -61,10 +61,6 @@ class ParentFrame(wx.Frame):
         # in their driving script
         self.Show(True)
 
-        # close the matplotlib image, otherwise if plt.show() is in the driving
-        # script, it will show the figure that are in the frame as a separate
-        # matplotlib figure
-
     def initialize_figure(self, nrows=1, ncols=1):
         """
         Create a figure, adds an axis or axes to that figure and initializes a figure canvas. If
