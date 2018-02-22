@@ -47,6 +47,9 @@ class ParentFrame(wx.Frame):
         # attribute so it can be modified by child classes
         self.menu_bar = None
 
+        # menu button to open a reference txt file and look at it
+        self.open_ref_menu_button = None
+
         # the exit menu for the frames
         self.exit_menu = None
 
@@ -103,6 +106,10 @@ class ParentFrame(wx.Frame):
         """
         file_menu = wx.Menu()
 
+        self.open_ref_menu_button = wx.MenuItem(file_menu, wx.ID_ANY, 'Open Ref',
+                                                'Open a Reference File')
+        file_menu.Append(self.open_ref_menu_button)
+
         self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit', 'Terminate the Program')
         file_menu.Append(self.exit_menu)
 
@@ -116,6 +123,24 @@ class ParentFrame(wx.Frame):
         Binds the menu options with their method handlers
         """
         self.Bind(wx.EVT_MENU, self.on_exit, self.exit_menu)
+        self.Bind(wx.EVT_MENU, self.on_open_ref, self.open_ref_menu_button)
+
+    def on_open_ref(self, event):
+        """
+        Opens a new frame that shows the time and frequency information of a
+        reference txt file
+        """
+        from RefFrame import ReferenceFrame
+
+        dlg = wx.FileDialog(self, 'Open Reference', wildcard='txt files (*.txt)|*.txt',
+                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+
+        if dlg.ShowModal() == wx.ID_CANCEL:
+            return
+
+        full_path = dlg.GetPath()
+
+        ReferenceFrame(full_path, is_stand_alone=False)
 
     @staticmethod
     def on_exit(event):
@@ -124,5 +149,3 @@ class ParentFrame(wx.Frame):
         """
         for window in wx.GetTopLevelWindows():
             window.Destroy()
-
-

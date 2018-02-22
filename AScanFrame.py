@@ -84,48 +84,46 @@ class AScanFrame(ParentFrame):
         # match with physical location instead of index
         self.ij_indexing = False
 
+        self.modify_menu()
         self.connect_events()
 
+        # this will prevent a Matplotlib figure from popping up if the user
+        # creates other figures and calls plt.show() after initializing the
+        # application
         plt.close(self.figure)
 
     def connect_events(self):
+        """
+        Binds (connects) events to their appropriate method handlers
+        """
+        # matplotlib events
         self.figure_canvas.mpl_connect('pick_event', self.grab_gate_handler)
         self.figure_canvas.mpl_connect('button_release_event', self.release_gate_handler)
         self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
         self.figure_canvas.mpl_connect('motion_notify_event', self.gate_slider)
 
-    # Override from ParentFrame
-    def connect_menu(self):
-        """
-        Binds the menu options with their method handlers
-        """
-        self.Bind(wx.EVT_MENU, self.on_exit, self.exit_menu)
+        # wxPython events
         self.Bind(wx.EVT_MENU, self.switch_a_scan_view, self.a_scan_view_menu)
         self.Bind(wx.EVT_MENU, self.change_index_system, self.location_view_menu)
 
-    # Override from ParentFrame
-    def create_menu(self):
+    def modify_menu(self):
         """
-        Creates a menu that includes a exit option to terminate the program
+        Modifies the menu bar to include an options drop down menu with options
+        that are specific to the A-Scan
         """
-        file_menu = wx.Menu()
         options_menu = wx.Menu()
 
         self.a_scan_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Toggle A-Scan Only',
                                             'Turn A-Scan on/off')
         options_menu.Append(self.a_scan_view_menu)
 
-        self.location_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Indexing Option')
+        self.location_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Indexing Option',
+                                              'Change location description from (x, y) to (i, j)')
         options_menu.Append(self.location_view_menu)
 
-        self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit', 'Terminate the Program')
-        file_menu.Append(self.exit_menu)
+        self.menu_bar.Append(options_menu, '&Options')
 
-        menu_bar = wx.MenuBar()
-        menu_bar.Append(file_menu, '&File')
-        menu_bar.Append(options_menu, '&Options')
-
-        self.SetMenuBar(menu_bar)
+        self.SetMenuBar(self.menu_bar)
         self.Fit()
 
     def plot(self, i, j):
@@ -271,7 +269,8 @@ class AScanFrame(ParentFrame):
         # replot
         self.ij_indexing = not self.ij_indexing
 
-        self.plot(self.i_index, self.j_index)
+        if self.is_initialized:
+            self.plot(self.i_index, self.j_index)
 
     def motion_handler(self, event):
         """
@@ -372,7 +371,7 @@ class AScanFrame(ParentFrame):
         # ensure that the gate is inside of the bounds
         if index < 0:
             index = 0
-        elif index > self.data.wave_length - 1 :
+        elif index > self.data.wave_length - 1:
             index = self.data.wave_length - 1
 
         new_gate = copy.deepcopy(self.data.gate)
