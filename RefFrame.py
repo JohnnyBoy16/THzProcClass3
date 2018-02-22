@@ -15,7 +15,7 @@ class ReferenceFrame(ParentFrame):
     domain waveform.
     """
 
-    def __init__(self, filename, basedir=None, title=None):
+    def __init__(self, filename, basedir=None, title=None, is_stand_alone=False):
         """
         Constructor method
         :param filename: Either the name of the file or the full path to the
@@ -206,6 +206,17 @@ class ReferenceFrame(ParentFrame):
 
         self.line_held.set_xdata([x, x])
         self.figure_canvas.draw()
+
+    # Override from ParentFrame
+    def on_exit(self, event):
+        """
+        Closes itself
+        """
+        # create a separate method from Parent Frame so self.Destroy() is called
+        # instead of closing all windows. This allows this frame to be closed
+        # via the exit option in the file menu without closing other frames.
+
+        self.Destroy()
 
 
 if __name__ == '__main__':
