@@ -49,11 +49,14 @@ class RawCScanFrame(ParentFrame):
         # of the C-Scan that is currently in view
         self.calculate_sn_ratio_menu_button = None
 
+        # menu item that allows the user to change the colorbar orientation
+        self.colorbar_dir_menu_button = None
+
         self.modify_menu()
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
 
-        plt.close(self.figure)
+        # plt.close(self.figure)
 
     def modify_menu(self):
         """
@@ -69,8 +72,13 @@ class RawCScanFrame(ParentFrame):
         self.calculate_sn_ratio_menu_button = wx.MenuItem(options_menu, wx.ID_ANY,
                                                           'Calculate S/N Ratio', description)
 
+        title = 'Change Colorbar Orientation'
+        description = 'Changes the colorbar orientation between horizontal and vertical'
+        self.colorbar_dir_menu_button = wx.MenuItem(options_menu, wx.ID_ANY, title, description)
+
         options_menu.Append(self.rescale_colorbar_menu)
         options_menu.Append(self.calculate_sn_ratio_menu_button)
+        options_menu.Append(self.colorbar_dir_menu_button)
 
         self.menu_bar.Append(options_menu, '&Options')
         self.SetMenuBar(self.menu_bar)
@@ -116,6 +124,7 @@ class RawCScanFrame(ParentFrame):
         # wx events
         self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
         self.Bind(wx.EVT_MENU, self.on_signal_noise_click, self.calculate_sn_ratio_menu_button)
+        self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
 
     def motion_handler(self, event):
         """
@@ -251,3 +260,19 @@ class RawCScanFrame(ParentFrame):
         dlg = wx.MessageDialog(self, mssg_string, title_string, wx.OK |
                                wx.ICON_INFORMATION)
         dlg.ShowModal()
+
+    def change_colorbar_dir(self, event):
+        """
+        Changes the orientation of the colorbar
+        """
+        # TODO should remove colorbar_dir as an attribute to THzData and make
+        # TODO an attribute of self instead. That way, Raw C-Scan and
+        # TODO interpolated C-Scan can have their own colorbar direction
+        if self.data.colorbar_dir == 'horizontal':
+            self.data.colorbar_dir = 'vertical'
+        else:
+            self.data.colorbar_dir = 'horizontal'
+
+        self.colorbar.remove()
+        self.colorbar = plt.colorbar(self.image, orientation=self.data.colorbar_dir)
+        self.figure_canvas.draw()
