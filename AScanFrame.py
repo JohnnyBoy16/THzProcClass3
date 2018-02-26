@@ -369,7 +369,7 @@ class AScanFrame(ParentFrame):
         # ensure that the gate is inside of the bounds
         if index < 0:
             index = 0
-        elif index > self.data.wave_length - 1 :
+        elif index > self.data.wave_length - 1:
             index = self.data.wave_length - 1
 
         new_gate = copy.deepcopy(self.data.gate)

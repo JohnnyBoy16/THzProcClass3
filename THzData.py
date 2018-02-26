@@ -524,6 +524,25 @@ class THzData:
         elif np.shape(np.asarray(incoming_gate)) != (2, 2):
             raise ValueError('gate must by a 2x2 list or numpy array!')
 
+        # if the front gates haven't changed we can avoid the call to
+        # find_peaks and speed things up I think.
+        # if np.array_equal(self.gate[0], incoming_gate[0]):
+        #     self.gate[1] = incoming_gate[1]
+        #     self.bin_range[1] = incoming_gate[1]
+
+        #     # adjust the left and right follow gates of the 2nd layer based on front surface peaks
+        #     # and the incoming gate
+        #     left_gate = self.peak_bin[0, 0, :, :] + incoming_gate[0][0]
+        #     right_gate = self.peak_bin[0, 0, :, :] + incoming_gate[0][1]
+
+        #     left_gate[np.where(left_gate < 0)] = 0
+        #     right_gate[np.where(right_gate > self.wave_length-1)] = self.wave_length - 1
+
+        #     self.peak_bin[3, 2, :, :] = left_gate
+        #     self.peak_bin[4, 2, :, :] = right_gate
+
+        #     self.fast_find_peaks(left_gate, right_gate)
+
         # update bin_range and call find peaks with new bin_range
         self.bin_range = copy.deepcopy(incoming_gate)
         self.find_peaks()
@@ -532,14 +551,25 @@ class THzData:
         # If an error is thrown, gate will not update. This is what we want
         self.gate = copy.deepcopy(incoming_gate)
 
-    def set_b_scan_on(self, given_boolean):
-        pass
-        # TODO: write code so setting B-Scan on when it was previously off,
-        # TODO: calls make B-Scan from the last point clicked
+    def fast_find_peaks(self):
+        """
+        Faster version of find peaks that is called if only the follow gates
+        are changed.
+        """
+        # if only the follow gates are changed we don't have to worry about
+        # finding the FSE within the lead gates because it is already set
+        left_gate = self.peak_bin[3, 2, :, :]
+        right_gate = self.peak_bin[4, 2, :, :]
 
-    def set_b_scan_direction(self, given_direction):
-        pass
-        # TODO: write code so changing B-Scan direction will call make B-Scan from last point clicked
+        for i in range(self.y_step):
+            for j in range(self.x_step):
+                max_pos = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmax(axis=2)
+                min_pos = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmin(axis=2)
+                halfway = int((max_pos + min_pos) / 2)
+
+                self.peak_bin[0, 1, i, j] = max_pos
+                self.peak_bin[1, 1, i, j] = min_pos
+                self.peak_bin[2, 1, i, j] = halfway
 
     def find_peaks(self):
         """
