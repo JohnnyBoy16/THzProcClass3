@@ -41,11 +41,22 @@ class RawCScanFrame(ParentFrame):
         self.i_index = None
         self.j_index = None
 
+        # the menu item that rescales the colorbar based on the part of the
+        # C-Scan that is currently in view
         self.rescale_colorbar_menu = None
+
+        # the menu item that calculates the signal to noise ratio from the part
+        # of the C-Scan that is currently in view
+        self.calculate_sn_ratio_menu_button = None
+
+        # menu item that allows the user to change the colorbar orientation
+        self.colorbar_dir_menu_button = None
 
         self.modify_menu()
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
+
+        # plt.close(self.figure)
 
     def modify_menu(self):
         """
@@ -57,7 +68,17 @@ class RawCScanFrame(ParentFrame):
         self.rescale_colorbar_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Rescale Colorbar',
                                                  'Rescale colorbar with current image')
 
+        description = 'Calculate signal to noise ratio based on current view'
+        self.calculate_sn_ratio_menu_button = wx.MenuItem(options_menu, wx.ID_ANY,
+                                                          'Calculate S/N Ratio', description)
+
+        title = 'Change Colorbar Orientation'
+        description = 'Changes the colorbar orientation between horizontal and vertical'
+        self.colorbar_dir_menu_button = wx.MenuItem(options_menu, wx.ID_ANY, title, description)
+
         options_menu.Append(self.rescale_colorbar_menu)
+        options_menu.Append(self.calculate_sn_ratio_menu_button)
+        options_menu.Append(self.colorbar_dir_menu_button)
 
         self.menu_bar.Append(options_menu, '&Options')
         self.SetMenuBar(self.menu_bar)
@@ -69,7 +90,6 @@ class RawCScanFrame(ParentFrame):
         """
         self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
                                       extent=self.data.c_scan_extent, picker=True, origin='upper')
-        # self.axis.set_title('Raw C-Scan Test', fontsize=16)
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
         self.colorbar = plt.colorbar(self.image, orientation=self.data.colorbar_dir)
@@ -102,7 +122,9 @@ class RawCScanFrame(ParentFrame):
         self.figure_canvas.mpl_connect('button_press_event', self.select_point)
 
         # wx events
-        self.Bind(wx.EVT_MENU,  self.on_rescale_click, self.rescale_colorbar_menu)
+        self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
+        self.Bind(wx.EVT_MENU, self.on_signal_noise_click, self.calculate_sn_ratio_menu_button)
+        self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
 
     def motion_handler(self, event):
         """
@@ -174,3 +196,83 @@ class RawCScanFrame(ParentFrame):
         self.image.set_clim(vmin=area.min(), vmax=area.max())
         self.colorbar.update_normal(self.image)  # update colorbar with new vmin and vmax values
         self.figure_canvas.draw()  # redraw image
+
+    def on_signal_noise_click(self, event):
+        """
+        Calculate the signal to noise ratio based on the area that is currently
+        in view in the C-Scan.
+
+        Calculate the signal to noise ratio defined as ...
+            (Peak Defect - Avg. Noise) / (Peak Noise - Avg. Noise)
+        """
+
+        import skimage.filters
+
+        # this is the signal to noise ratio metric that was used during the
+        # engine titanium consortium
+
+        x_bounds = np.array(self.axis.get_xlim())
+        y_bounds = np.array(self.axis.get_ylim())
+
+        # the y bounds are normally inverted on the C-Scan to show the data as
+        # how it is viewed in lab (-y corresponds to the top of the image).
+        # Rearrange them in low -> high order
+        if y_bounds[0] > y_bounds[1]:
+            temp = y_bounds[0]
+            y_bounds[0] = y_bounds[1]
+            y_bounds[1] = temp
+
+        # it could be possible that x_bounds may be inverted also
+        if x_bounds[0] > x_bounds[1]:
+            temp = x_bounds[0]
+            x_bounds[0] = x_bounds[1]
+            x_bounds[1] = temp
+
+        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
+        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
+
+        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
+        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
+
+        # we want to area to be inclusive of the end points so add +1 to them
+        area = self.data.c_scan[i0:i1+1, j0:j1+1]
+
+        thresh = skimage.filters.threshold_otsu(area)
+
+        # create a new figure that shows the the thresholded image
+        plt.figure('C-Scan After Threshold')
+        plt.imshow(area > thresh, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.grid()
+        plt.show()
+
+        peak_defect = area[np.where(area > thresh)].max()
+        avg_noise = area[np.where(area < thresh)].mean()
+        peak_noise = area[np.where(area < thresh)].max()
+
+        sn_ratio = (peak_defect - avg_noise) / (peak_noise - avg_noise)
+
+        # open a message dialog that displays the signal to noise ratio
+        # calculation
+        mssg_string = 'Signal to Noise Ratio = %0.4f' % sn_ratio
+        title_string = 'Signal to Noise Ratio'
+        dlg = wx.MessageDialog(self, mssg_string, title_string, wx.OK |
+                               wx.ICON_INFORMATION)
+        dlg.ShowModal()
+
+    def change_colorbar_dir(self, event):
+        """
+        Changes the orientation of the colorbar
+        """
+        # TODO should remove colorbar_dir as an attribute to THzData and make
+        # TODO an attribute of self instead. That way, Raw C-Scan and
+        # TODO interpolated C-Scan can have their own colorbar direction
+        if self.data.colorbar_dir == 'horizontal':
+            self.data.colorbar_dir = 'vertical'
+        else:
+            self.data.colorbar_dir = 'horizontal'
+
+        self.colorbar.remove()
+        self.colorbar = plt.colorbar(self.image, orientation=self.data.colorbar_dir)
+        self.figure_canvas.draw()

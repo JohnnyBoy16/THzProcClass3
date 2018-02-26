@@ -535,9 +535,15 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                     if L < 0:
                         L = 0
                     elif L > wavlen:
-                        raise ValueError("Incorrect left gate setting in gate", k)
+                        string = ('Incorrect left gate setting in gate %d at location (%d, %d)'
+                                  % (k, i, j))
+                        raise ValueError(string)
+
                     if R < L:  # corrected 15SEP2013; right follow gate is less than left followgate
-                        raise ValueError("Incorrect right gate setting in gate", k)
+                        string = ('Incorrect right gate setting in gate %d at location (%d, %d)'
+                                  % (k, i, j))
+                        raise ValueError(string)
+
                     elif R > wavlen:
                         R = wavlen - 1  # force right gate to be a valid index
                     PeakBin[3, k, i, j] = L

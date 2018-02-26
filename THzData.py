@@ -512,7 +512,7 @@ class THzData:
     def change_gate(self, incoming_gate):
         """
         Change the gate locations by providing an a new gate. Then updates bin_range and peak_bin
-        accordingly
+        accordingly. This method does NOT create a new C-Scan image based on the new gate.
         :param incoming_gate: The value of gate that is to be changed to, must be a 2x2 list or
                     numpy array
         """

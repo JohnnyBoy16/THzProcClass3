@@ -1,6 +1,7 @@
 import pdb
 
 import wx
+import matplotlib.pyplot as plt
 
 from THzProc.ParentFrame import ParentFrame
 
@@ -45,6 +46,8 @@ class BScanFrame(ParentFrame):
 
         self.modify_menu()
         self.connect_events()
+
+        plt.close(self.figure)
 
     def modify_menu(self):
         """

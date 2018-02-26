@@ -41,6 +41,8 @@ class InterpolatedCScanFrame(ParentFrame):
         self.connect_events()
         self.plot()  # make sure to call plot so the interpolated image is plotted when starting
 
+        plt.close(self.figure)
+
     def connect_events(self):
         """
         Connects events to their appropriate method
