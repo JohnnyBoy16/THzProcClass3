@@ -484,6 +484,12 @@ def AmpCor300(parameters, wavlen, delt, Xstep, Ystep, WaveformNew):
 
 
 def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, PulseLen, FollowGateOn):
+    """
+    If PulseLen is given as < 0. The function will take the peaks as the maximum and minimum of the
+    waveform within the gates regardless of how close they are to each other (i.e., peak signal
+    can be very far away from the minimum signal location). If PulseLen is > 0, the function will
+    use that to search within a specified range of the peak signal for the minimum value
+    """
     # given list BinRange, find peak(s) and gate(s) in wavform in terms of bin locations to PeakBin[i,npeak,Ystep,Xstep],
     # i=0: pos. peak, =1 neg., =2 half way, 3=left gate, 4=right gate
 
@@ -549,17 +555,19 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                     PeakBin[3, k, i, j] = L
                     PeakBin[4, k, i, j] = R
                     PeakBin[0, k, i, j] = np.argmax(waveform[i, j, L:R]) + L
-                    if PulseLen < 0.:  # 29DEC2015: enforce searcg of neg. peak within original gate
+                    if PulseLen < 0.:  # 29DEC2015: enforce search of neg. peak within original gate
                         L2 = L
                         R2 = R
                     else:
                         LL = int(PulseLen * nHalfPulse)
                         if LL < 1:
                             LL = 1  # 29DEC2015: to prevent zero-length gate
-                        L2 = PeakBin[0, k, i, j] - LL
+                        L2 = PeakBin[0, k, i, j] - LL  # positive peak
                         L2 = (L2 if L2 > L else L)
                         R2 = PeakBin[0, k, i, j] + LL
                         R2 = (R2 if R2 <= wavlen else wavlen)
+                        # line below added by John Nagel
+                        R2 = (R2 if R2 < R else R)  # enforce search inside gate
                     PeakBin[1, k, i, j] = np.argmin(waveform[i, j, L2:R2]) + L2
                     PeakBin[2, k, i, j] = (PeakBin[0, k, i, j] + PeakBin[1, k, i, j]) / 2
 
