@@ -56,7 +56,7 @@ class RawCScanFrame(ParentFrame):
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
 
-        # plt.close(self.figure)
+        plt.close(self.figure)
 
     def modify_menu(self):
         """
@@ -68,9 +68,10 @@ class RawCScanFrame(ParentFrame):
         self.rescale_colorbar_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Rescale Colorbar',
                                                  'Rescale colorbar with current image')
 
-        description = 'Calculate signal to noise ratio based on current view'
-        self.calculate_sn_ratio_menu_button = wx.MenuItem(options_menu, wx.ID_ANY,
-                                                          'Calculate S/N Ratio', description)
+        description = 'Calculate signal to noise ratio based on current C-Scan view'
+        title = 'Calculate S/N Ratio'
+        self.calculate_sn_ratio_menu_button = wx.MenuItem(options_menu, wx.ID_ANY, title,
+                                                          description)
 
         title = 'Change Colorbar Orientation'
         description = 'Changes the colorbar orientation between horizontal and vertical'
@@ -92,7 +93,7 @@ class RawCScanFrame(ParentFrame):
                                       extent=self.data.c_scan_extent, picker=True, origin='upper')
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
-        self.colorbar = plt.colorbar(self.image, orientation=self.data.colorbar_dir)
+        self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.data.colorbar_dir)
         self.axis.grid()
         self.figure_canvas.draw()
 
@@ -123,7 +124,8 @@ class RawCScanFrame(ParentFrame):
 
         # wx events
         self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
-        self.Bind(wx.EVT_MENU, self.on_signal_noise_click, self.calculate_sn_ratio_menu_button)
+        self.Bind(wx.EVT_MENU, self.on_ascan_signal_noise_click,
+                  self.calculate_sn_ratio_menu_button)
         self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
 
     def motion_handler(self, event):
@@ -197,15 +199,15 @@ class RawCScanFrame(ParentFrame):
         self.colorbar.update_normal(self.image)  # update colorbar with new vmin and vmax values
         self.figure_canvas.draw()  # redraw image
 
-    def on_signal_noise_click(self, event):
+    def on_cscan_signal_noise_click(self, event):
         """
         Calculate the signal to noise ratio based on the area that is currently
-        in view in the C-Scan.
+        in view in the C-Scan. This method is based only on the pixel values
+        that are in the C-Scan image.
 
         Calculate the signal to noise ratio defined as ...
             (Peak Defect - Avg. Noise) / (Peak Noise - Avg. Noise)
         """
-
         import skimage.filters
 
         # this is the signal to noise ratio metric that was used during the
@@ -261,6 +263,154 @@ class RawCScanFrame(ParentFrame):
                                wx.ICON_INFORMATION)
         dlg.ShowModal()
 
+    def on_ascan_signal_noise_click(self, event):
+        """
+        Calculates the signal to noise ratio based on the signal and noise in
+        the A-Scan between the follow gates. This method uses the defect and
+        the surrounding waveforms to calculate the signal to noise ratio.
+        """
+        import skimage.filters
+
+        # this method calculates the signal to noise ratio using the largest
+        # peak to peak value from a defect waveform (based on thresholding) as
+        # the peak signal value. It then searches all of the non-defect
+        # waveforms for the largest peak to peak value and calls that the peak
+        # noise value. While searching it rectifies all noise waveforms and
+        # averages each waveform to find the average noise value.
+
+        x_bounds = np.array(self.axis.get_xlim())
+        y_bounds = np.array(self.axis.get_ylim())
+
+        # the y bounds are normally inverted on the C-Scan to show the data as
+        # how it is viewed in lab (-y corresponds to the top of the image).
+        # Rearrange them in low -> high order
+        if y_bounds[0] > y_bounds[1]:
+            temp = y_bounds[0]
+            y_bounds[0] = y_bounds[1]
+            y_bounds[1] = temp
+
+        # it could be possible that x_bounds may be inverted also
+        if x_bounds[0] > x_bounds[1]:
+            temp = x_bounds[0]
+            x_bounds[0] = x_bounds[1]
+            x_bounds[1] = temp
+
+        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
+        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
+
+        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
+        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
+
+        # we want to area to be inclusive of the end points so add +1 to them
+        area = self.data.c_scan[i0:i1+1, j0:j1+1]
+
+        thresh = skimage.filters.threshold_otsu(area)
+
+        binary_image = area > thresh
+
+        max_defect = 0
+        max_noise = 0
+        avg_noise = 0
+        count = 0
+        for i in range(binary_image.shape[0]):
+            for j in range(binary_image.shape[1]):
+                left = self.data.peak_bin[3, 1, i+i0, j+j0]
+                right = self.data.peak_bin[4, 1, i+i0, j+j0]
+                wave = self.data.waveform[i+i0, j+j0, left:right]
+
+                max_pos = self.data.peak_bin[0, 1, i+i0, j+j0]
+                min_pos = self.data.peak_bin[1, 1, ]
+
+                # check for max defect signal in waveforms
+                if binary_image[i, j] == 1:
+                    vpp = wave.max() - wave.min()
+                    if vpp > max_defect:
+                        max_defect = vpp
+
+                # get average noise and max noise signal
+                else:
+                    vpp = wave.max() - wave.min()
+                    if vpp > max_noise:
+                        max_noise = vpp
+                    avg_noise += np.mean(np.abs(wave))
+                    count += 1
+
+        avg_noise /= count
+        sn_ratio = (max_defect-avg_noise) / (max_noise-avg_noise)
+
+        # create a new figure that shows the the thresholded image
+        plt.figure('C-Scan After Threshold')
+        plt.imshow(area > thresh, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.grid()
+        plt.show()
+
+        pdb.set_trace()
+
+        # open a message dialog that displays the signal to noise ratio
+        # calculation
+        mssg_string = 'Signal to Noise Ratio = %0.4f' % sn_ratio
+        title_string = 'Signal to Noise Ratio'
+        dlg = wx.MessageDialog(self, mssg_string, title_string, wx.OK |
+                               wx.ICON_INFORMATION)
+        dlg.ShowModal()
+
+    def on_ascan_signal_noise_click_defect_only(self, event):
+        """
+        Calculates the signal to noise ratio based on the signal and noise in
+        the A-Scan between the follow gates. This method uses the waveforms
+        from the defect only to calculate the signal to noise ratio.
+        """
+        import skimage.filters
+
+        x_bounds = np.array(self.axis.get_xlim())
+        y_bounds = np.array(self.axis.get_ylim())
+
+        # the y bounds are normally inverted on the C-Scan to show the data as
+        # how it is viewed in lab (-y corresponds to the top of the image).
+        # Rearrange them in low -> high order
+        if y_bounds[0] > y_bounds[1]:
+            temp = y_bounds[0]
+            y_bounds[0] = y_bounds[1]
+            y_bounds[1] = temp
+
+        # it could be possible that x_bounds may be inverted also
+        if x_bounds[0] > x_bounds[1]:
+            temp = x_bounds[0]
+            x_bounds[0] = x_bounds[1]
+            x_bounds[1] = temp
+
+        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
+        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
+
+        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
+        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
+
+        # we want to area to be inclusive of the end points so add +1 to them
+        area = self.data.c_scan[i0:i1+1, j0:j1+1]
+
+        thresh = skimage.filters.threshold_otsu(area)
+
+        binary_image = area > thresh
+
+        max_defect = 0
+        max_noise = 0
+        avg_noise = 0
+        count = 0
+        for i in range(binary_image.shape[0]):
+            for j in range(binary_image.shape[1]):
+                left = self.data.peak_bin[3, 1, i+i0, j+j0]
+                right = self.data.peak_bin[4, 1, i+i0, j+j0]
+                wave = self.data.waveform[i+i0, j+j0, left:right]
+                # check for max defect signal in waveforms only on defect
+                if binary_image[i, j] == 1:
+                    vpp = wave.max() - wave.min()
+                    if vpp > max_defect:  # store max vpp
+                        max_defect = vpp
+
+                    
+
     def change_colorbar_dir(self, event):
         """
         Changes the orientation of the colorbar
@@ -274,5 +424,10 @@ class RawCScanFrame(ParentFrame):
             self.data.colorbar_dir = 'horizontal'
 
         self.colorbar.remove()
-        self.colorbar = plt.colorbar(self.image, orientation=self.data.colorbar_dir)
+
+        # need to specify which axis the colorbar will be drawn on. Otherwise
+        # it will attach itself to the most recent figure object, which may not
+        # be the figure from this frame
+        self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.data.colorbar_dir)
+
         self.figure_canvas.draw()
