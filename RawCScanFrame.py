@@ -69,9 +69,14 @@ class RawCScanFrame(ParentFrame):
                                                  'Rescale colorbar with current image')
 
         description = 'Calculate signal to noise ratio based on current C-Scan view'
-        title = 'Calculate S/N Ratio'
+        title = 'Calculate A-Scan S/N Ratio'
         self.calculate_sn_ratio_menu_button = wx.MenuItem(options_menu, wx.ID_ANY, title,
                                                           description)
+
+        title = 'Calculate A-Scan S/N Ratio from Defect only'
+        description = 'Calculate S/N ratio from defect waveforms only'
+        self.calculate_sn_ratio_menu_button2 = wx.MenuItem(options_menu, wx.ID_ANY, title,
+                                                           description)
 
         title = 'Change Colorbar Orientation'
         description = 'Changes the colorbar orientation between horizontal and vertical'
@@ -79,6 +84,7 @@ class RawCScanFrame(ParentFrame):
 
         options_menu.Append(self.rescale_colorbar_menu)
         options_menu.Append(self.calculate_sn_ratio_menu_button)
+        options_menu.Append(self.calculate_sn_ratio_menu_button2)
         options_menu.Append(self.colorbar_dir_menu_button)
 
         self.menu_bar.Append(options_menu, '&Options')
@@ -126,6 +132,8 @@ class RawCScanFrame(ParentFrame):
         self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
         self.Bind(wx.EVT_MENU, self.on_ascan_signal_noise_click,
                   self.calculate_sn_ratio_menu_button)
+        self.Bind(wx.EVT_MENU, self.on_ascan_signal_noise_click_defect_only,
+                  self.calculate_sn_ratio_menu_button2)
         self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
 
     def motion_handler(self, event):
@@ -313,23 +321,33 @@ class RawCScanFrame(ParentFrame):
         avg_noise = 0
         count = 0
         for i in range(binary_image.shape[0]):
+            ii = i+i0
             for j in range(binary_image.shape[1]):
-                left = self.data.peak_bin[3, 1, i+i0, j+j0]
-                right = self.data.peak_bin[4, 1, i+i0, j+j0]
-                wave = self.data.waveform[i+i0, j+j0, left:right]
+                jj = j+j0
+                # these are the left and right gates for the waveform
+                left = self.data.peak_bin[3, 1, ii, jj]
+                right = self.data.peak_bin[4, 1, ii, jj]
 
-                max_pos = self.data.peak_bin[0, 1, i+i0, j+j0]
-                min_pos = self.data.peak_bin[1, 1, ]
+                # extract the part of the wave that is within the gates
+                wave = self.data.waveform[ii, jj, left:right]
+
+                # due to find peaks looking for peaks within pulse length
+                # the maximum or minimum of the waveform may not actually be
+                # one of the peaks, so use peak bin to get index
+                max_pos = self.data.peak_bin[0, 1, ii, jj]
+                min_pos = self.data.peak_bin[1, 1, ii, jj]
+
+                max_val = self.data.waveform[ii, jj, max_pos]
+                min_val = self.data.waveform[ii, jj, min_pos]
+                vpp = max_val - min_val
 
                 # check for max defect signal in waveforms
                 if binary_image[i, j] == 1:
-                    vpp = wave.max() - wave.min()
                     if vpp > max_defect:
                         max_defect = vpp
 
                 # get average noise and max noise signal
                 else:
-                    vpp = wave.max() - wave.min()
                     if vpp > max_noise:
                         max_noise = vpp
                     avg_noise += np.mean(np.abs(wave))
@@ -346,12 +364,15 @@ class RawCScanFrame(ParentFrame):
         plt.grid()
         plt.show()
 
-        pdb.set_trace()
-
         # open a message dialog that displays the signal to noise ratio
         # calculation
-        mssg_string = 'Signal to Noise Ratio = %0.4f' % sn_ratio
+        mssg_string = ('Signal to Noise Ratio = %0.4f\n'
+                       'Max Peak = %0.4f\n'
+                       'Max Noise = %0.4f\n'
+                       'Avg. Noise = %0.4f'
+                       % (sn_ratio, max_defect, max_noise, avg_noise))
         title_string = 'Signal to Noise Ratio'
+
         dlg = wx.MessageDialog(self, mssg_string, title_string, wx.OK |
                                wx.ICON_INFORMATION)
         dlg.ShowModal()
@@ -363,6 +384,13 @@ class RawCScanFrame(ParentFrame):
         from the defect only to calculate the signal to noise ratio.
         """
         import skimage.filters
+
+        # this method calculates the signal to noise ratio using the largest
+        # peak to peak value from a defect waveform (based on thresholding) as
+        # the peak signal value. It then searches all of the non-defect
+        # waveforms for the largest peak to peak value and calls that the peak
+        # noise value. While searching it rectifies all noise waveforms and
+        # averages each waveform to find the average noise value.
 
         x_bounds = np.array(self.axis.get_xlim())
         y_bounds = np.array(self.axis.get_ylim())
@@ -399,17 +427,50 @@ class RawCScanFrame(ParentFrame):
         avg_noise = 0
         count = 0
         for i in range(binary_image.shape[0]):
+            ii = i+i0
             for j in range(binary_image.shape[1]):
-                left = self.data.peak_bin[3, 1, i+i0, j+j0]
-                right = self.data.peak_bin[4, 1, i+i0, j+j0]
-                wave = self.data.waveform[i+i0, j+j0, left:right]
-                # check for max defect signal in waveforms only on defect
-                if binary_image[i, j] == 1:
-                    vpp = wave.max() - wave.min()
-                    if vpp > max_defect:  # store max vpp
+                jj = j+j0
+                # these are the left and right gates for the waveform
+                left = self.data.peak_bin[3, 1, ii, jj]
+                right = self.data.peak_bin[4, 1, ii, jj]
+
+                # extract the part of the wave that is within the gates
+                wave = self.data.waveform[ii, jj, left:right]
+
+                # due to find peaks looking for peaks within pulse length
+                # the maximum or minimum of the waveform may not actually be
+                # one of the peaks, so use peak bin to get index
+                max_pos = self.data.peak_bin[0, 1, ii, jj]
+                min_pos = self.data.peak_bin[1, 1, ii, jj]
+
+                max_val = self.data.waveform[ii, jj, max_pos]
+                min_val = self.data.waveform[ii, jj, min_pos]
+                vpp = max_val - min_val
+
+                if binary_image[i, j] == 1:  # on defect
+                    if vpp > max_defect:
                         max_defect = vpp
 
-                    
+                    self._noise_helper()
+
+    def _noise_helper(self, max_pos, min_pos, ii, jj):
+        """
+        Helper function to find the max noise and avg noise inside of an A-Scan
+        Waveform
+        """
+        has_crossed_zero_twice = False
+
+        wave = self.data.waveform[]
+
+        idx = max_pos
+        while not has_crossed_zero_twice:
+            if max_pos < min_pos:
+                idx -= 1
+                self.data.waveform[ii, jj, idx] * self.data.waveform[ii, jj, idx]
+            else:
+                idx += 1
+
+            if self.data.waveform[ii, jj, idx] * self.data.waveform[ii, jj, idx]
 
     def change_colorbar_dir(self, event):
         """
