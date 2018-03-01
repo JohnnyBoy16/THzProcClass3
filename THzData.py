@@ -688,8 +688,51 @@ class RefData(object):
     Class representation of the reference data.
     """
 
-    def __init__(self, filename, basedir=None, zero=True):
+    def __init__(self, filename, basedir=None, zero=True, gate=[0, None]):
         """
-        Constructor method
+        Constructor method. Everything is done here.
+        :param filename: Either the base filename or the full path to the file
+                if basedir is left as None
+        :param basedir: The path to the directory that contains the file.
+                (Default: None) If left as None, filename is expected to
+                contain the full path to the file.
+        :param zero: If true adjust time values so time[0] is 0. If False, leave
+                as the raw values from optical delay (Default: True)
+        :param gate: The index slices to remove the front "blip" and the noise
+                from the water vapor after the reflection.
         """
-        pass
+        from base_util.base_util import read_reference_data
+
+        # the array of time values and waveform amplitudes
+        self.time, self.waveform = read_reference_data(filename, basedir, zero)
+
+        if zero:
+            self.time -= self.time[0]
+
+        # the number of points in the waveform
+        self.n_points = len(self.time)
+
+        # calculate dt based on start time, end time, and number of points
+        # this should work regardless of whether or not it was zeroed above
+        self.dt = (self.time[-1] - self.time[0]) / (self.n_points - 1)
+
+        # the spacing in the frequency domain
+        self.df = 1.0 / (self.n_points * self.dt)
+
+        self.freq = np.linspace(0, (self.n_points/2)*self.df, self.n_points//2+1)
+
+        # the frequency amplitude waveform
+        # create a deepcopy here so we keep the origin waveform with "blip"
+        self.freq_waveform = copy.deepcopy(self.waveform)
+
+        # remove the front blip from the frequency domain waveform if they
+        # passed through a value
+        if gate[0] != 0:
+            self.freq_waveform[:gate[0]] = 0
+
+        # remove the trailing noise if they passed through a rear gate value
+        # this cuts down on noise from water vapor
+        if gate[1] is not None:
+            self.freq_waveform[gate[1]:] = 0
+
+        self.freq_waveform = np.fft.rfft(self.freq_waveform) * self.dt
