@@ -273,7 +273,11 @@ class RawCScanFrame(ParentFrame):
 
         # open a message dialog that displays the signal to noise ratio
         # calculation
-        mssg_string = 'Signal to Noise Ratio = %0.4f' % sn_ratio
+        mssg_string = ('Signal to Noise Ratio = %0.4f\n'
+                       'Max Peak = %0.4f\n'
+                       'Max Noise = %0.4f\n'
+                       'Avg. Noise = %0.4f'
+                       % (sn_ratio, peak_defect, peak_noise, avg_noise))
         title_string = 'Signal to Noise Ratio'
         dlg = wx.MessageDialog(self, mssg_string, title_string, wx.OK |
                                wx.ICON_INFORMATION)
@@ -500,11 +504,11 @@ class RawCScanFrame(ParentFrame):
         # could be tricky. I am thinking that I will look for two zero
         # crossings and call that the end of the defect signal. The rest of the
         # A-Scan that is inside of the gates will then be called noise
-        cross_counter = 0
 
         wave = self.data.waveform[i, j, :]
 
         idx = min(max_pos, min_pos)
+        cross_counter = 0
         while cross_counter < 2:
             idx -= 1
             if wave[idx] * wave[idx+1] < 0:
@@ -532,28 +536,43 @@ class RawCScanFrame(ParentFrame):
         if front_right > right_gate:
             front_right = right_gate
 
-        if front_right == right_gate or back_left == left_gate:
-            pdb.set_trace()
+        # if back_left == left_gate or front_right == right_gate:
+        #     pdb.set_trace()
 
+        right_only = False
         try:
             left_max = wave[left_gate:back_left].max()
             left_min = wave[left_gate:back_left].min()
         except ValueError:
             string = ('There is not enough room before the defect signal\n'
                       'You should move the left gate forwards!')
-            raise ValueError(string)
+            print(string)
+            left_max = 0
+            left_min = 0
+            right_only = True
         left_wave = wave[left_gate:back_left]
 
+        left_only = False
         try:
             right_max = wave[front_right:right_gate].max()
             right_min = wave[front_right:right_gate].min()
         except ValueError:
             string = ('There is not enough room after the defect signal\n'
                       'You should move the right gate backwards!')
-            raise ValueError(string)
+            print(string)
+            right_max = 0
+            right_min = 0
+            left_only = True
         right_wave = wave[front_right:right_gate]
 
-        noise_wave = np.concatenate((left_wave, right_wave))
+        if left_only and right_only:
+            raise ValueError('Something went very wrong!')
+        elif left_only:
+            noise_wave = left_wave
+        elif right_only:
+            noise_wave = right_wave
+        else:
+            noise_wave = np.concatenate((left_wave, right_wave))
 
         # this is the max noise signal as vpp on either side of the defect
         # signal in the A-Scan
