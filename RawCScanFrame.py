@@ -224,38 +224,7 @@ class RawCScanFrame(ParentFrame):
         Calculate the signal to noise ratio defined as ...
             (Peak Defect - Avg. Noise) / (Peak Noise - Avg. Noise)
         """
-        import skimage.filters
-
-        # this is the signal to noise ratio metric that was used during the
-        # engine titanium consortium
-
-        x_bounds = np.array(self.axis.get_xlim())
-        y_bounds = np.array(self.axis.get_ylim())
-
-        # the y bounds are normally inverted on the C-Scan to show the data as
-        # how it is viewed in lab (-y corresponds to the top of the image).
-        # Rearrange them in low -> high order
-        if y_bounds[0] > y_bounds[1]:
-            temp = y_bounds[0]
-            y_bounds[0] = y_bounds[1]
-            y_bounds[1] = temp
-
-        # it could be possible that x_bounds may be inverted also
-        if x_bounds[0] > x_bounds[1]:
-            temp = x_bounds[0]
-            x_bounds[0] = x_bounds[1]
-            x_bounds[1] = temp
-
-        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
-        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
-
-        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
-        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
-
-        # we want to area to be inclusive of the end points so add +1 to them
-        area = self.data.c_scan[i0:i1+1, j0:j1+1]
-
-        thresh = skimage.filters.threshold_otsu(area)
+        area, thresh, bound_coords = self._sn_area_helper()
 
         # create a new figure that shows the the thresholded image
         plt.figure('C-Scan After Threshold')
@@ -289,8 +258,6 @@ class RawCScanFrame(ParentFrame):
         the A-Scan between the follow gates. This method uses the defect and
         the surrounding waveforms to calculate the signal to noise ratio.
         """
-        import skimage.filters
-
         # this method calculates the signal to noise ratio using the largest
         # peak to peak value from a defect waveform (based on thresholding) as
         # the peak signal value. It then searches all of the non-defect
@@ -298,33 +265,8 @@ class RawCScanFrame(ParentFrame):
         # noise value. While searching it rectifies all noise waveforms and
         # averages each waveform to find the average noise value.
 
-        x_bounds = np.array(self.axis.get_xlim())
-        y_bounds = np.array(self.axis.get_ylim())
-
-        # the y bounds are normally inverted on the C-Scan to show the data as
-        # how it is viewed in lab (-y corresponds to the top of the image).
-        # Rearrange them in low -> high order
-        if y_bounds[0] > y_bounds[1]:
-            temp = y_bounds[0]
-            y_bounds[0] = y_bounds[1]
-            y_bounds[1] = temp
-
-        # it could be possible that x_bounds may be inverted also
-        if x_bounds[0] > x_bounds[1]:
-            temp = x_bounds[0]
-            x_bounds[0] = x_bounds[1]
-            x_bounds[1] = temp
-
-        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
-        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
-
-        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
-        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
-
-        # we want to area to be inclusive of the end points so add +1 to them
-        area = self.data.c_scan[i0:i1+1, j0:j1+1]
-
-        thresh = skimage.filters.threshold_otsu(area)
+        area, thresh, bound_coords = self._sn_area_helper()
+        i0, i1, j0, j1 = bound_coords
 
         binary_image = area > thresh
 
@@ -395,42 +337,8 @@ class RawCScanFrame(ParentFrame):
         the A-Scan between the follow gates. This method uses the waveforms
         from the defect only to calculate the signal to noise ratio.
         """
-        import skimage.filters
-
-        # this method calculates the signal to noise ratio using the largest
-        # peak to peak value from a defect waveform (based on thresholding) as
-        # the peak signal value. It then searches all of the non-defect
-        # waveforms for the largest peak to peak value and calls that the peak
-        # noise value. While searching it rectifies all noise waveforms and
-        # averages each waveform to find the average noise value.
-
-        x_bounds = np.array(self.axis.get_xlim())
-        y_bounds = np.array(self.axis.get_ylim())
-
-        # the y bounds are normally inverted on the C-Scan to show the data as
-        # how it is viewed in lab (-y corresponds to the top of the image).
-        # Rearrange them in low -> high order
-        if y_bounds[0] > y_bounds[1]:
-            temp = y_bounds[0]
-            y_bounds[0] = y_bounds[1]
-            y_bounds[1] = temp
-
-        # it could be possible that x_bounds may be inverted also
-        if x_bounds[0] > x_bounds[1]:
-            temp = x_bounds[0]
-            x_bounds[0] = x_bounds[1]
-            x_bounds[1] = temp
-
-        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
-        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
-
-        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
-        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
-
-        # we want to area to be inclusive of the end points so add +1 to them
-        area = self.data.c_scan[i0:i1+1, j0:j1+1]
-
-        thresh = skimage.filters.threshold_otsu(area)
+        area, thresh, bound_coords = self._sn_area_helper()
+        i0, i1, j0, j1 = bound_coords
 
         binary_image = area > thresh
 
@@ -499,6 +407,8 @@ class RawCScanFrame(ParentFrame):
             waveform that we are interested in. Should be peak_bin[1, 1, i, j]
         :param i: The row the waveform is from
         :param j: The column the waveform is from
+        :return max_noise: The maximum noise signal in that waveform
+        :return avg_noise: The average noise in that waveform
         """
         # determining where the signal from the defect ends and noise starts
         # could be tricky. I am thinking that I will look for two zero
@@ -535,9 +445,6 @@ class RawCScanFrame(ParentFrame):
             back_left = left_gate
         if front_right > right_gate:
             front_right = right_gate
-
-        # if back_left == left_gate or front_right == right_gate:
-        #     pdb.set_trace()
 
         right_only = False
         try:
@@ -581,6 +488,55 @@ class RawCScanFrame(ParentFrame):
         avg_noise = np.mean(np.abs(noise_wave))
 
         return max_noise, avg_noise
+
+    def _sn_area_helper(self):
+        """
+        Method to determine the area in the image that was visible when a
+        signal to noise calculation button was hit. The keeps common code in
+        one place that will be called for any signal to noise ratio calculation
+        :return area: The area that is inside of the x & y limits in the C-Scan
+        :return thresh: The threshold for the area to create a binary image. If
+            the entire sample is in view Yen's threshold will be used;
+            otherwise, Otsu's method will be used to generate the threshold
+        :return coord_bounds: A tuple that has the i & j indices that bound the
+            area of interest. Returned as (i0, i1, j0, j1).
+        """
+        import skimage.filters
+
+        # using the get_bound method instead of get_lim method returns the
+        # lower and upper bounds of the image in increasing order regardless of
+        # which is left or right; or top or bottom. This will allow us to
+        # access the data x & y array without rearranging the boundary values
+        x_bounds = np.array(self.axis.get_xbound())
+        y_bounds = np.array(self.axis.get_ybound())
+
+        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
+        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
+
+        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
+        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
+
+        # we want to area to be inclusive of the end points so add +1 to them
+        area = self.data.c_scan[i0:i1+1, j0:j1+1]
+
+        # get the y bounds again with get_ylim() so they are in bottom-top
+        # order to compare to c_scan_extent
+        y_bounds = np.array(self.axis.get_ylim())
+        bounds = np.concatenate((x_bounds, y_bounds))
+
+        # the threshold that we want to use depends on whether or not the full
+        # sample is in view. Yen's Threshold seems to do better on the full
+        # sample, while Otsu's Threshold does better on a smaller area with one
+        # or two defects visible
+        if np.array_equal(bounds, self.data.c_scan_extent):
+            thresh = skimage.filters.threshold_yen(area)
+        else:
+            thresh = skimage.filters.threshold_otsu(area)
+
+        # put the coords in a tuple to return them
+        coord_bounds = (i0, i1, j0, j1)
+
+        return area, thresh, coord_bounds
 
     def change_colorbar_dir(self, event):
         """
