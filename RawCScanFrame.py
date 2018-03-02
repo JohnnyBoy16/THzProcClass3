@@ -224,19 +224,22 @@ class RawCScanFrame(ParentFrame):
         Calculate the signal to noise ratio defined as ...
             (Peak Defect - Avg. Noise) / (Peak Noise - Avg. Noise)
         """
-        area, thresh, bound_coords = self._sn_area_helper()
+        area, thresh, bound_coords = self._sn_define_area_helper()
+
+        binary_image = np.zeros(area.shape)
+        binary_image[np.where(area > thresh)] = 1
 
         # create a new figure that shows the the thresholded image
         plt.figure('C-Scan After Threshold')
-        plt.imshow(area > thresh, cmap='gray', extent=self.axis.axis())
+        plt.imshow(binary_image, cmap='gray', extent=self.axis.axis())
         plt.xlabel('X Scan Location (mm)')
         plt.ylabel('Y Scan Location (mm)')
         plt.grid()
         plt.show()
 
-        peak_defect = area[np.where(area > thresh)].max()
-        avg_noise = area[np.where(area < thresh)].mean()
-        peak_noise = area[np.where(area < thresh)].max()
+        peak_defect = area[np.where(binary_image == 1)].max()
+        avg_noise = area[np.where(binary_image == 0)].mean()
+        peak_noise = area[np.where(binary_image == 0)].max()
 
         sn_ratio = (peak_defect - avg_noise) / (peak_noise - avg_noise)
 
@@ -265,54 +268,89 @@ class RawCScanFrame(ParentFrame):
         # noise value. While searching it rectifies all noise waveforms and
         # averages each waveform to find the average noise value.
 
-        area, thresh, bound_coords = self._sn_area_helper()
+        from skimage.measure import label, regionprops
+        from skimage.morphology import closing, square
+        from base_util.base_util import clear_small_defects
+
+        area, thresh, bound_coords = self._sn_define_area_helper()
         i0, i1, j0, j1 = bound_coords
 
-        binary_image = area > thresh
+        binary_image = np.zeros(area.shape)
+        binary_image[np.where(area > thresh)] = 1
+        binary_image = clear_small_defects(binary_image, 5)
 
-        max_defect = 0
-        max_noise = 0
-        avg_noise = 0
-        count = 0
-        for i in range(binary_image.shape[0]):
-            ii = i+i0
-            for j in range(binary_image.shape[1]):
-                jj = j+j0
-                # these are the left and right gates for the waveform
-                left = self.data.peak_bin[3, 1, ii, jj]
-                right = self.data.peak_bin[4, 1, ii, jj]
+        # use skimage closing function to close up the defects that are close
+        # to each other. This forces the label function to treat them as one
+        # defect and makes
+        binary_image = closing(binary_image, square(3))
 
-                # extract the part of the wave that is within the gates
-                wave = self.data.waveform[ii, jj, left:right]
+        labeled_image = label(binary_image)
 
-                # due to find peaks looking for peaks within pulse length
-                # the maximum or minimum of the waveform may not actually be
-                # one of the peaks, so use peak bin to get index
-                max_pos = self.data.peak_bin[0, 1, ii, jj]
-                min_pos = self.data.peak_bin[1, 1, ii, jj]
+        sn_list = list()
+        for region in regionprops(labeled_image):
+            bbox = np.asarray(region.bbox)
+            print(bbox)
+            # adjust bbox to twice current width and height
+            bbox[0] //= 2
+            bbox[1] //= 2
+            bbox[2] *= 2
+            bbox[3] *= 2
 
-                max_val = self.data.waveform[ii, jj, max_pos]
-                min_val = self.data.waveform[ii, jj, min_pos]
-                vpp = max_val - min_val
+            max_defect = 0
+            max_noise = 0
+            avg_noise = 0
+            count = 0
+            print(bbox)
+            for i in range(bbox[0], bbox[2]+1):
+                ii = i+i0
+                for j in range(bbox[1], bbox[3]+1):
+                    jj = j+j0
+                    # these are the left and right gates for the waveform
+                    left = self.data.peak_bin[3, 1, ii, jj]
+                    right = self.data.peak_bin[4, 1, ii, jj]
 
-                # check for max defect signal in waveforms
-                if binary_image[i, j] == 1:
-                    if vpp > max_defect:
-                        max_defect = vpp
+                    # extract the part of the wave that is within the gates
+                    wave = self.data.waveform[ii, jj, left:right]
 
-                # get average noise and max noise signal
-                else:
-                    if vpp > max_noise:
-                        max_noise = vpp
-                    avg_noise += np.mean(np.abs(wave))
-                    count += 1
+                    # due to find peaks looking for peaks within pulse length
+                    # the maximum or minimum of the waveform may not actually be
+                    # one of the peaks, so use peak bin to get index
+                    max_pos = self.data.peak_bin[0, 1, ii, jj]
+                    min_pos = self.data.peak_bin[1, 1, ii, jj]
 
-        avg_noise /= count
-        sn_ratio = (max_defect-avg_noise) / (max_noise-avg_noise)
+                    max_val = self.data.waveform[ii, jj, max_pos]
+                    min_val = self.data.waveform[ii, jj, min_pos]
+                    vpp = max_val - min_val
+
+                    # check for max defect signal in waveforms
+                    if binary_image[i, j] == 1:
+                        if vpp > max_defect:
+                            max_defect = vpp
+
+                    # get average noise and max noise signal
+                    else:
+                        if vpp > max_noise:
+                            max_noise = vpp
+                        avg_noise += np.mean(np.abs(wave))
+                        count += 1
+
+            avg_noise /= count
+            sn_ratio = (max_defect-avg_noise) / (max_noise-avg_noise)
+
+            sn_list.append(sn_ratio)
+
+        print(sn_list)
+
+        plt.figure('Labled Image')
+        plt.imshow(labeled_image, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.colorbar()
+        plt.grid()
 
         # create a new figure that shows the the thresholded image
         plt.figure('C-Scan After Threshold')
-        plt.imshow(area > thresh, cmap='gray', extent=self.axis.axis())
+        plt.imshow(binary_image, cmap='gray', extent=self.axis.axis())
         plt.xlabel('X Scan Location (mm)')
         plt.ylabel('Y Scan Location (mm)')
         plt.grid()
@@ -337,10 +375,11 @@ class RawCScanFrame(ParentFrame):
         the A-Scan between the follow gates. This method uses the waveforms
         from the defect only to calculate the signal to noise ratio.
         """
-        area, thresh, bound_coords = self._sn_area_helper()
+        area, thresh, bound_coords = self._sn_define_area_helper()
         i0, i1, j0, j1 = bound_coords
 
-        binary_image = area > thresh
+        binary_image = np.zeros(area.shape)
+        binary_image[np.where(area > thresh)] = 1
 
         max_defect = 0
         max_noise = 0
@@ -348,7 +387,6 @@ class RawCScanFrame(ParentFrame):
         count = 0
         for i in range(binary_image.shape[0]):
             ii = i+i0
-            print(ii)
             for j in range(binary_image.shape[1]):
                 jj = j+j0
 
@@ -378,7 +416,7 @@ class RawCScanFrame(ParentFrame):
 
         # create a new figure that shows the the thresholded image
         plt.figure('C-Scan After Threshold')
-        plt.imshow(area > thresh, cmap='gray', extent=self.axis.axis())
+        plt.imshow(binary_image, cmap='gray', extent=self.axis.axis())
         plt.xlabel('X Scan Location (mm)')
         plt.ylabel('Y Scan Location (mm)')
         plt.grid()
@@ -489,7 +527,7 @@ class RawCScanFrame(ParentFrame):
 
         return max_noise, avg_noise
 
-    def _sn_area_helper(self):
+    def _sn_define_area_helper(self):
         """
         Method to determine the area in the image that was visible when a
         signal to noise calculation button was hit. The keeps common code in
@@ -528,10 +566,12 @@ class RawCScanFrame(ParentFrame):
         # sample is in view. Yen's Threshold seems to do better on the full
         # sample, while Otsu's Threshold does better on a smaller area with one
         # or two defects visible
-        if np.array_equal(bounds, self.data.c_scan_extent):
-            thresh = skimage.filters.threshold_yen(area)
-        else:
-            thresh = skimage.filters.threshold_otsu(area)
+        # if np.array_equal(bounds, self.data.c_scan_extent):
+        #     thresh = skimage.filters.threshold_yen(area)
+        # else:
+        #     thresh = skimage.filters.threshold_otsu(area)
+
+        thresh = skimage.filters.threshold_yen(area)
 
         # put the coords in a tuple to return them
         coord_bounds = (i0, i1, j0, j1)
