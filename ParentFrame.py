@@ -114,7 +114,7 @@ class ParentFrame(wx.Frame):
         file_menu.Append(self.exit_menu)
 
         self.menu_bar = wx.MenuBar()
-        self.menu_bar.Append(file_menu, "&File")
+        self.menu_bar.Append(file_menu, '&File')
 
         self.SetMenuBar(self.menu_bar)
 
