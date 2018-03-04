@@ -270,6 +270,7 @@ class RawCScanFrame(ParentFrame):
 
         from skimage.measure import label, regionprops
         from skimage.morphology import closing, square
+        from skimage.segmentation import clear_border
         from base_util.base_util import clear_small_defects
 
         area, thresh, bound_coords = self._sn_define_area_helper()
@@ -283,31 +284,56 @@ class RawCScanFrame(ParentFrame):
         # to each other. This forces the label function to treat them as one
         # defect and makes
         binary_image = closing(binary_image, square(3))
+        binary_image = clear_border(binary_image)
 
         labeled_image = label(binary_image)
 
+        plt.figure('Labled Image')
+        plt.imshow(labeled_image, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.colorbar()
+        plt.grid()
+
+        # create a new figure that shows the the thresholded image
+        plt.figure('C-Scan After Threshold')
+        plt.imshow(binary_image, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.grid()
+        plt.show()
+
         sn_list = list()
+        max_defect_list = list()
+        max_noise_list = list()
+        avg_noise_list = list()
         for region in regionprops(labeled_image):
             bbox = np.asarray(region.bbox)
-            print(bbox)
-            # adjust bbox to twice current width and height
-            bbox[0] //= 2
-            bbox[1] //= 2
-            bbox[2] *= 2
-            bbox[3] *= 2
+            bbox_area = (bbox[2]-bbox[0]) * (bbox[3]-bbox[1])
+            print('Initial bbox =', bbox)
+            while bbox_area < region.area * 2:
+                # adjust bbox to be at least twice the defect area
+                bbox[0] -= 1
+                bbox[1] -= 1
+                bbox[2] += 1
+                bbox[3] += 1
+                bbox_area = (bbox[2]-bbox[0]) * (bbox[3]-bbox[1])
+            print('Adjusted bbox =', bbox)
 
             max_defect = 0
             max_noise = 0
             avg_noise = 0
             count = 0
-            print(bbox)
             for i in range(bbox[0], bbox[2]+1):
                 ii = i+i0
                 for j in range(bbox[1], bbox[3]+1):
                     jj = j+j0
                     # these are the left and right gates for the waveform
-                    left = self.data.peak_bin[3, 1, ii, jj]
-                    right = self.data.peak_bin[4, 1, ii, jj]
+                    try:
+                        left = self.data.peak_bin[3, 1, ii, jj]
+                        right = self.data.peak_bin[4, 1, ii, jj]
+                    except IndexError:
+                        pdb.set_trace()
 
                     # extract the part of the wave that is within the gates
                     wave = self.data.waveform[ii, jj, left:right]
@@ -338,8 +364,20 @@ class RawCScanFrame(ParentFrame):
             sn_ratio = (max_defect-avg_noise) / (max_noise-avg_noise)
 
             sn_list.append(sn_ratio)
+            max_defect_list.append(max_defect)
+            max_noise_list.append(max_noise)
+            avg_noise_list.append(avg_noise)
 
-        print(sn_list)
+        for i in range((len(sn_list))):
+            sn_ratio = sn_list[i]
+            max_defect = max_defect_list[i]
+            max_noise = max_noise_list[i]
+            avg_noise = avg_noise_list[i]
+            print('\nDefect %d' % (i+1))
+            print('S/N Ratio %0.4f' % sn_ratio)
+            print('Max Defect:  %0.4f' % max_defect)
+            print('Max Noise: %0.4f' % max_noise)
+            print('Avg. Noise: %0.4f' % avg_noise)
 
         plt.figure('Labled Image')
         plt.imshow(labeled_image, cmap='gray', extent=self.axis.axis())
@@ -375,19 +413,56 @@ class RawCScanFrame(ParentFrame):
         the A-Scan between the follow gates. This method uses the waveforms
         from the defect only to calculate the signal to noise ratio.
         """
+        from skimage.measure import label, regionprops
+        from skimage.morphology import closing, square
+        from skimage.segmentation import clear_border
+        from base_util.base_util import clear_small_defects
+
         area, thresh, bound_coords = self._sn_define_area_helper()
         i0, i1, j0, j1 = bound_coords
 
         binary_image = np.zeros(area.shape)
         binary_image[np.where(area > thresh)] = 1
+        binary_image = clear_small_defects(binary_image, 5)
 
-        max_defect = 0
-        max_noise = 0
-        avg_noise = 0
-        count = 0
-        for i in range(binary_image.shape[0]):
-            ii = i+i0
-            for j in range(binary_image.shape[1]):
+        # use skimage closing function to close up the defects that are close
+        # to each other. This forces the label function to treat them as one
+        # defect and makes
+        binary_image = closing(binary_image, square(3))
+        binary_image = clear_border(binary_image)
+
+        labeled_image = label(binary_image)
+
+        plt.figure('Labled Image')
+        plt.imshow(labeled_image, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.colorbar()
+        plt.grid()
+
+        # create a new figure that shows the the thresholded image
+        plt.figure('C-Scan After Threshold')
+        plt.imshow(binary_image, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.grid()
+        plt.show()
+
+        sn_list = list()
+        max_defect_list = list()
+        max_noise_list = list()
+        avg_noise_list = list()
+
+        # we don't care about bbox for this method because we are calculating
+        # noise from A-Scan on defect only
+        for region in regionprops(labeled_image):
+            max_defect = 0
+            max_noise = 0
+            avg_noise = 0
+            for loc in region.coords:
+                i = loc[0]
+                j = loc[1]
+                ii = i+i0
                 jj = j+j0
 
                 # due to find peaks looking for peaks within pulse length
@@ -400,19 +475,40 @@ class RawCScanFrame(ParentFrame):
                 min_val = self.data.waveform[ii, jj, min_pos]
                 vpp = max_val - min_val
 
-                if binary_image[i, j] == 1:  # on defect
-                    count += 1
-                    if vpp > max_defect:
-                        max_defect = vpp
-                    # return max_noise and avg_noise from this (i, j) waveform
-                    max_noise_wave, avg_noise_wave = self._noise_helper(max_pos, min_pos, ii, jj)
+                if vpp > max_defect:
+                    max_defect = vpp
 
-                    avg_noise += avg_noise_wave
-                    if max_noise_wave > max_noise:
-                        max_noise = max_noise_wave
+                max_noise_wave, avg_noise_wave = self._noise_helper(max_pos, min_pos, ii, jj)
 
-        avg_noise /= count
-        sn_ratio = (max_defect-avg_noise) / (max_noise-avg_noise)
+                avg_noise += avg_noise_wave
+                if max_noise_wave > max_noise:
+                    max_noise = max_noise_wave
+
+            avg_noise /= region.area
+            sn_ratio = (max_defect-avg_noise) / (max_noise-avg_noise)
+
+            sn_list.append(sn_ratio)
+            max_defect_list.append(max_defect)
+            max_noise_list.append(max_noise)
+            avg_noise_list.append(avg_noise)
+
+        for i in range((len(sn_list))):
+            sn_ratio = sn_list[i]
+            max_defect = max_defect_list[i]
+            max_noise = max_noise_list[i]
+            avg_noise = avg_noise_list[i]
+            print('\nDefect %d' % (i+1))
+            print('S/N Ratio %0.4f' % sn_ratio)
+            print('Max Defect:  %0.4f' % max_defect)
+            print('Max Noise: %0.4f' % max_noise)
+            print('Avg. Noise: %0.4f' % avg_noise)
+
+        plt.figure('Labled Image')
+        plt.imshow(labeled_image, cmap='gray', extent=self.axis.axis())
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.colorbar()
+        plt.grid()
 
         # create a new figure that shows the the thresholded image
         plt.figure('C-Scan After Threshold')
@@ -491,7 +587,7 @@ class RawCScanFrame(ParentFrame):
         except ValueError:
             string = ('There is not enough room before the defect signal\n'
                       'You should move the left gate forwards!')
-            print(string)
+            # print(string)
             left_max = 0
             left_min = 0
             right_only = True
@@ -504,7 +600,7 @@ class RawCScanFrame(ParentFrame):
         except ValueError:
             string = ('There is not enough room after the defect signal\n'
                       'You should move the right gate backwards!')
-            print(string)
+            # print(string)
             right_max = 0
             right_min = 0
             left_only = True
@@ -571,7 +667,8 @@ class RawCScanFrame(ParentFrame):
         # else:
         #     thresh = skimage.filters.threshold_otsu(area)
 
-        thresh = skimage.filters.threshold_yen(area)
+        thresh = skimage.filters.threshold_triangle(area)
+        skimage.filters.try_all_threshold(area)
 
         # put the coords in a tuple to return them
         coord_bounds = (i0, i1, j0, j1)
