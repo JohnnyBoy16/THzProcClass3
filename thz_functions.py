@@ -549,30 +549,76 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                         string = ('Incorrect right gate setting in gate %d at location (%d, %d)'
                                   % (k, i, j))
                         raise ValueError(string)
-
                     elif R > wavlen:
                         R = wavlen - 1  # force right gate to be a valid index
+
+                    # set the local left and right follow gate for this (i, j) pair
                     PeakBin[3, k, i, j] = L
                     PeakBin[4, k, i, j] = R
-                    PeakBin[0, k, i, j] = np.argmax(waveform[i, j, L:R]) + L
+
+                    # if PulseLen is < 0, just make Vpp from the max and min values with in the
+                    # gate, regardless of how far apart they are
                     if PulseLen < 0.:  # 29DEC2015: enforce search of neg. peak within original gate
-                        L2 = L
-                        R2 = R
+                        PeakBin[0, k, i, j] = np.argmax(waveform[i, j, L:R]) + L  # max location
+                        PeakBin[1, k, i, j] = np.argmin(waveform[i, j, L:R]) + L  # min location
+                        PeakBin[2, k, i, j] = (PeakBin[0, k, i, j] + PeakBin[1, k, i, j]) // 2
+
+                    # otherwise, look for the max Vpp within a certain space from either the max,
+                    # or min peak. This gate width is defined by PulseLen and nHalfPulse
                     else:
-                        LL = int(PulseLen * nHalfPulse)
+                        # find peak in waveform and look for negative peak within gate that is
+                        # determined by PulseLen*nHalfPulse
+                        max_pos = np.argmax(waveform[i, j, L:R]) + L
+                        LL = int(PulseLen * nHalfPulse)  # width of the gate within to search
                         if LL < 1:
                             LL = 1  # 29DEC2015: to prevent zero-length gate
-                        L2 = PeakBin[0, k, i, j] - LL  # positive peak
+                        L2 = max_pos - LL  # positive peak
                         L2 = (L2 if L2 > L else L)
-                        R2 = PeakBin[0, k, i, j] + LL
+                        R2 = max_pos + LL
                         R2 = (R2 if R2 <= wavlen else wavlen)
                         # line below added by John Nagel
                         R2 = (R2 if R2 < R else R)  # enforce search inside gate
-                    PeakBin[1, k, i, j] = np.argmin(waveform[i, j, L2:R2]) + L2
-                    PeakBin[2, k, i, j] = (PeakBin[0, k, i, j] + PeakBin[1, k, i, j]) / 2
+                        min_pos = np.argmin(waveform[i, j, L2:R2]) + L2
+                        vpp = waveform[i, j, max_pos] - waveform[i, j, min_pos]
 
+                        # now search for min_peak within original follow gate
+                        # all of the temp variables are for the argmax & argmin
+                        # positions using the pulse gate around the argmin
+                        min_pos_temp = np.argmin(waveform[i, j, L:R]) + L
+                        if min_pos_temp == min_pos:
+                            # if the argmin of the waveform inside of the follow gate is the same
+                            # as the argmin of the waveform inside of the pulse gate then we have
+                            # already found the max Vpp, there for set PeakBin with first peak
+                            # positions that were found
+                            PeakBin[0, k, i, j] = max_pos
+                            PeakBin[1, k, i, j] = min_pos
+                            PeakBin[2, k, i, j] = (max_pos - min_pos) // 2
+
+                        else:
+                            L2 = min_pos_temp - LL
+                            R2 = min_pos_temp + LL
+
+                            # make sure the half pulse gate stays inside of the follow gate
+                            if L2 < L:
+                                L2 = L
+                            if R2 > R:
+                                R2 = R
+
+                            # now look for max peak inside of pulse gate bracketed around argmin
+                            max_pos_temp = np.argmax(waveform[i, j, L2:R2]) + L2
+                            vpp_temp = waveform[i, j, max_pos_temp] - waveform[i, j, min_pos_temp]
+
+                            if vpp_temp > vpp:  # pk to pk value between this max/min pair is larger
+                                PeakBin[0, k, i, j] = max_pos_temp
+                                PeakBin[1, k, i, j] = min_pos_temp
+                                PeakBin[2, k, i, j] = (max_pos_temp - min_pos_temp) // 2
+                            else:  # original pk to pk value was larger
+                                PeakBin[0, k, i, j] = max_pos
+                                PeakBin[1, k, i, j] = min_pos
+                                PeakBin[2, k, i, j] = (max_pos - min_pos) // 2
+
+    # if follow_gate_on is False, BinRange is given as [0, wavelength] in main
     else:  # =0: the whole waveform (the BinRange is given only [0,wavlen] in main)
-
         for i in range(Ystep):
             for j in range(Xstep):
                 PeakBin[0, 0, i, j] = \
