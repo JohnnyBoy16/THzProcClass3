@@ -289,21 +289,22 @@ class RawCScanFrame(ParentFrame):
         sn_list = list()
         for region in regionprops(labeled_image):
             bbox = np.asarray(region.bbox)
-            print(bbox)
-            # adjust bbox to twice current width and height
-            bbox[0] //= 2
-            bbox[1] //= 2
-            bbox[2] *= 2
-            bbox[3] *= 2
+            bbox_area = (bbox[2]-bbox[0]) * (bbox[3]-bbox[1])
+            while bbox_area < region.area*2:
+                bbox[0] -= 1
+                bbox[1] -= 1
+                bbox[2] += 1
+                bbox[3] += 1
+                bbox_area = (bbox[2]-bbox[0]) * (bbox[3]-bbox[1])
 
             max_defect = 0
             max_noise = 0
             avg_noise = 0
             count = 0
-            print(bbox)
-            for i in range(bbox[0], bbox[2]+1):
+            pdb.set_trace()
+            for i in range(bbox[0], bbox[2]):
                 ii = i+i0
-                for j in range(bbox[1], bbox[3]+1):
+                for j in range(bbox[1], bbox[3]):
                     jj = j+j0
                     # these are the left and right gates for the waveform
                     left = self.data.peak_bin[3, 1, ii, jj]
