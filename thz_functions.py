@@ -592,7 +592,7 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                             # positions that were found
                             PeakBin[0, k, i, j] = max_pos
                             PeakBin[1, k, i, j] = min_pos
-                            PeakBin[2, k, i, j] = (max_pos - min_pos) // 2
+                            PeakBin[2, k, i, j] = (max_pos + min_pos) // 2
 
                         else:
                             L2 = min_pos_temp - LL
@@ -611,11 +611,11 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                             if vpp_temp > vpp:  # pk to pk value between this max/min pair is larger
                                 PeakBin[0, k, i, j] = max_pos_temp
                                 PeakBin[1, k, i, j] = min_pos_temp
-                                PeakBin[2, k, i, j] = (max_pos_temp - min_pos_temp) // 2
+                                PeakBin[2, k, i, j] = (max_pos_temp + min_pos_temp) // 2
                             else:  # original pk to pk value was larger
                                 PeakBin[0, k, i, j] = max_pos
                                 PeakBin[1, k, i, j] = min_pos
-                                PeakBin[2, k, i, j] = (max_pos - min_pos) // 2
+                                PeakBin[2, k, i, j] = (max_pos + min_pos) // 2
 
     # if follow_gate_on is False, BinRange is given as [0, wavelength] in main
     else:  # =0: the whole waveform (the BinRange is given only [0,wavlen] in main)

@@ -277,6 +277,7 @@ class RawCScanFrame(ParentFrame):
         """
         pass
 
+    # private method
     def _sn_define_area_helper(self):
         """
         Method to determine the area in the image that was visible when a
