@@ -318,99 +318,6 @@ class THzData:
             for j in range(self.x_step):
                 self.tof_c_scan[i, j] = self.time[tof_index[i, j]]
 
-    def correct_amplitude(self, filename, basedir=None, focus=None):
-        """
-        Attempts to correct the amplitude for the time of flight in accordance with a gaussian
-        beam profile
-        :param
-        """
-        # this method is debateably functional
-        from scipy.interpolate import interp1d
-        from scipy.optimize import curve_fit
-        import util
-
-        c = 0.2998  # speed of light in mm/ps
-        theta0 = 17.5 * np.pi / 180  # incoming angle of THz beam
-
-        # need to the time of flight info to make adjustments, so if tof_c_scan has not been made
-        # made yet, make it
-        if self.tof_c_scan is None:
-            self.make_time_of_flight_c_scan()
-
-        if basedir is not None:
-            filename = os.path.join(basedir, filename)
-
-        distance, amplitude = np.loadtxt(filename, skiprows=1, unpack=True)
-
-        amplitude /= amplitude.max()  # normalize amplitude
-
-        # only interested in the values close to maximum as ceramic is pretty flat
-        # should give a better fit
-        max_index = amplitude.argmax()
-        amplitude = amplitude[max_index-5:max_index+6]
-        distance = distance[max_index-5:max_index+6]
-
-        # initial parameter guesses for curve_fit to Gaussian
-        a = 1  # amplitude
-        b = 0  # center
-        c = 0.25  # width
-        p0 = (a, b, c)
-
-        # only want best fit parameters back
-        p = curve_fit(util.guassian_curve, distance, amplitude, p0)[0]
-        print(p)
-        # p[1] = 0  # set b to be 0, center the curve
-
-        x = np.linspace(-0.25, 0.25, 100)
-        y = util.guassian_curve(x, *p)
-
-        import matplotlib.pyplot as plt
-        plt.figure('Gaussian Curve Fit Test')
-        plt.plot(x, y, 'b', label='Best Fit')
-        plt.plot(distance, amplitude, 'ro', label='True Points')
-        plt.xlabel('Distance from Focus (mm)')
-        plt.ylabel('Normalized Amplitude')
-        plt.grid()
-
-        if focus is None:
-            # assume that the pixel at (0, 0) is the focus
-            # all other TOF values will be in reference to this
-            j_idx = np.argmin(np.abs(self.x - 0))
-            i_idx = np.argmin(np.abs(self.y - 0))
-        else:
-            raise ValueError('Focus has to be (0,0) for now!')
-
-        tof_temp = copy.deepcopy(self.tof_c_scan)
-
-        tof_temp -= tof_temp[i_idx, j_idx]  # normalize TOF to focus point
-
-        i0 = np.where(self.y == self.y_small[0])[0][0]
-        i1 = np.where(self.y == self.y_small[-1])[0][0]
-        j0 = np.where(self.x == self.x_small[0])[0][0]
-        j1 = np.where(self.x == self.x_small[-1])[0][0]
-
-        # relative height of the sample
-        # NOTE!!!!!!!!: the height array is actually the negative of what it should be.
-        # however we want this because the THz gantry considers -z to be up
-        height = tof_temp[i0:i1+1, j0:j1+1] * c * np.cos(theta0) / 2
-        print('Max height = %0.4f' % height.min())  # therefore min() is actually highest point
-        print('Min Height = %0.4f' % height.max())  # and max() is lowest
-
-        amplitude_correction = util.guassian_curve(height, *p)
-
-        plt.figure('Amplitude Correction for Sample')
-        plt.imshow(amplitude_correction, interpolation='none', cmap='gray',
-                   extent=self.small_extent)
-        plt.xlabel('X Scan Location (mm)')
-        plt.ylabel('Y Scan Location (mm)')
-        plt.title('Amplitude Correction Factor')
-        plt.colorbar()
-        plt.grid()
-
-        c_scan_corrected = self.c_scan_small / amplitude_correction
-
-        return c_scan_corrected, height
-
     def resize(self, x0, x1, y0, y1, return_indices=False):
         """
         Resizes the data in the bounds between x0, x1, y0, and y1. Should be used to remove the
@@ -517,6 +424,7 @@ class THzData:
         :param incoming_gate: The value of gate that is to be changed to, must be a 2x2 list or
                     numpy array
         """
+        import time
 
         # incoming_gate is the same as what gate currently is; do nothing
         if np.array_equal(self.gate, incoming_gate):
@@ -525,32 +433,36 @@ class THzData:
         elif np.shape(np.asarray(incoming_gate)) != (2, 2):
             raise ValueError('gate must by a 2x2 list or numpy array!')
 
+        t0 = time.time()
+
         # if the front gates haven't changed we can avoid the call to
         # find_peaks and speed things up I think.
-        # if np.array_equal(self.gate[0], incoming_gate[0]):
-        #     self.gate[1] = incoming_gate[1]
-        #     self.bin_range[1] = incoming_gate[1]
+        if np.array_equal(self.gate[0], incoming_gate[0]):
+            self.gate[1] = incoming_gate[1]
+            self.bin_range[1] = incoming_gate[1]
 
-        #     # adjust the left and right follow gates of the 2nd layer based on front surface peaks
-        #     # and the incoming gate
-        #     left_gate = self.peak_bin[0, 0, :, :] + incoming_gate[0][0]
-        #     right_gate = self.peak_bin[0, 0, :, :] + incoming_gate[0][1]
+            # adjust the left and right follow gates of the 2nd layer based on front surface peaks
+            # and the incoming gate
+            left_gate = self.peak_bin[0, 0, :, :] + incoming_gate[1][0]
+            right_gate = self.peak_bin[0, 0, :, :] + incoming_gate[1][1]
+            left_gate[np.where(left_gate < 0)] = 0
+            right_gate[np.where(right_gate > self.wave_length-1)] = self.wave_length - 1
 
-        #     left_gate[np.where(left_gate < 0)] = 0
-        #     right_gate[np.where(right_gate > self.wave_length-1)] = self.wave_length - 1
+            self.peak_bin[3, 1, :, :] = left_gate
+            self.peak_bin[4, 1, :, :] = right_gate
 
-        #     self.peak_bin[3, 2, :, :] = left_gate
-        #     self.peak_bin[4, 2, :, :] = right_gate
-
-        #     self.fast_find_peaks(left_gate, right_gate)
-
-        # update bin_range and call find peaks with new bin_range
-        self.bin_range = copy.deepcopy(incoming_gate)
-        self.find_peaks()
+            self.fast_find_peaks()
+        else:
+            # update bin_range and call find peaks with new bin_range
+            self.bin_range = copy.deepcopy(incoming_gate)
+            self.find_peaks()
 
         # Update gate after everything else in case an error is thrown in find_peaks().
         # If an error is thrown, gate will not update. This is what we want
         self.gate = copy.deepcopy(incoming_gate)
+
+        t1 = time.time()
+        print('Time to change gates: %0.2f seconds' % (t1-t0))
 
     def fast_find_peaks(self):
         """
@@ -559,18 +471,65 @@ class THzData:
         """
         # if only the follow gates are changed we don't have to worry about
         # finding the FSE within the lead gates because it is already set
-        left_gate = self.peak_bin[3, 2, :, :]
-        right_gate = self.peak_bin[4, 2, :, :]
+        left_gate = self.peak_bin[3, 1, :, :]
+        right_gate = self.peak_bin[4, 1, :, :]
+
+        # determine pulse width, this is used to bracket peaks
+        pulse_width = int(self.PULSE_LENGTH * self.n_half_pulse)
+
+        # IMPORTANT...
+        # need to add left_gate or left pulse to all positions found. Numpy 
+        # returns the index for the position found within waveform that it is 
+        # passed
 
         for i in range(self.y_step):
             for j in range(self.x_step):
-                max_pos = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmax(axis=2)
-                min_pos = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmin(axis=2)
-                halfway = int((max_pos + min_pos) / 2)
+                max_pos = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmax()
+                max_pos += left_gate[i, j]
+                if self.PULSE_LENGTH < 0:
+                    min_pos = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmin()
+                    min_pos += left_gate[i, j]
+                else:
+                    left_pulse = max_pos - pulse_width
+                    right_pulse = max_pos + pulse_width
+                    # make sure pulse gates are inside of follow gates
+                    if left_pulse < left_gate[i, j]: 
+                        left_pulse = left_gate[i, j]
+                    if right_pulse > right_gate[i, j]:
+                        right_pulse = right_gate[i, j]
+                    # take argmin() from within pulse_gate
+                    min_pos = self.waveform[i, j, left_pulse:right_pulse].argmin()
+                    min_pos += left_pulse
+                    vpp = self.waveform[i, j, max_pos] - self.waveform[i, j, min_pos]
+
+                    # now get argmin() from within entire follow gate
+                    # min_pos2, max_pos2, & vpp2 are from using pulse gate
+                    # around argmin instead of argmax()
+                    min_pos2 = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmin()
+                    min_pos2 += left_gate[i, j]
+
+                    # if min_pos == min_pos2, then we have already found max peak to peak value
+                    # by starting search with argmax()
+                    if min_pos == min_pos2:
+                        pass
+                    else:
+                        left_pulse = min_pos - pulse_width
+                        right_pulse = min_pos + pulse_width
+                        if left_pulse < left_gate[i, j]:
+                            left_pulse = left_gate[i, j]
+                        if right_pulse > right_gate[i, j]:
+                            right_pulse = right_gate[i, j]
+                        max_pos2 = self.waveform[i, j, left_pulse:right_pulse].argmin()
+                        max_pos2 += left_pulse
+                        vpp2 = self.waveform[i, j, max_pos2] - self.waveform[i, j, min_pos2]
+
+                        if vpp2 > vpp:
+                            max_pos = max_pos2
+                            min_pos = min_pos2
 
                 self.peak_bin[0, 1, i, j] = max_pos
                 self.peak_bin[1, 1, i, j] = min_pos
-                self.peak_bin[2, 1, i, j] = halfway
+                self.peak_bin[2, 1, i, j] = (max_pos + min_pos) // 2
 
     def find_peaks(self):
         """
@@ -719,7 +678,8 @@ class RefData(object):
         # the spacing in the frequency domain
         self.df = 1.0 / (self.n_points * self.dt)
 
-        self.freq = np.linspace(0, (self.n_points/2)*self.df, self.n_points//2+1)
+        self.freq = np.linspace(0, (self.n_points/2)*self.df,
+                                self.n_points//2+1)
 
         # the frequency amplitude waveform
         # create a deepcopy here so we keep the origin waveform with "blip"
