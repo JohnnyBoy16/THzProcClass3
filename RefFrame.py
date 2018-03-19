@@ -1,11 +1,10 @@
 import pdb
 
 import numpy as np
-
 from matplotlib.lines import Line2D
-from util import read_reference_data
 
 from THzProc.ParentFrame import ParentFrame
+from base_util.base_util import read_reference_data
 
 
 class ReferenceFrame(ParentFrame):
