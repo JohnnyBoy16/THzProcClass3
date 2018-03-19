@@ -130,7 +130,7 @@ class ParentFrame(wx.Frame):
         Opens a new frame that shows the time and frequency information of a
         reference txt file
         """
-        from RefFrame import ReferenceFrame
+        from THzProc.RefFrame import ReferenceFrame
 
         dlg = wx.FileDialog(self, 'Open Reference', wildcard='txt files (*.txt)|*.txt',
                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
