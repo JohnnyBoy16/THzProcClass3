@@ -570,6 +570,7 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                         # determined by PulseLen*nHalfPulse
                         max_pos = np.argmax(waveform[i, j, L:R]) + L
                         LL = int(PulseLen * nHalfPulse)  # width of the gate within to search
+
                         if LL < 1:
                             LL = 1  # 29DEC2015: to prevent zero-length gate
                         L2 = max_pos - LL  # positive peak
