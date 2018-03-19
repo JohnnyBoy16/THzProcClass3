@@ -395,17 +395,10 @@ class AScanFrame(ParentFrame):
         # if a value error is encountered it usually means that the left follow gate is greater
         # than the last time length index
         if self.data.follow_gate_on:
-            try:
-                self.data.change_gate(new_gate)
-                self.line_held.set_xdata([event.xdata, event.xdata])
-                self.line_held.set_linewidth(1.0)  # return to normal width
-                self.figure_canvas.draw()
-            except ValueError:
-                # return to normal width only, don't update position
-                print('\nNeed to adjust follow gates first!\n')
-                self.line_held.set_linewidth(1.0)
-                self.figure_canvas.draw()
-                return
+            self.data.change_gate(new_gate)
+            self.line_held.set_xdata([event.xdata, event.xdata])
+            self.line_held.set_linewidth(1.0)  # return to normal width
+            self.figure_canvas.draw()
         else:  # otherwise change the gate manually, this is faster
             self.data.gate = copy.deepcopy(new_gate)
 
