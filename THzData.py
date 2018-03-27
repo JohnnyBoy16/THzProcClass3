@@ -656,7 +656,7 @@ class RefData:
     """
 
     def __init__(self, filename, basedir=None, zero=True, gate=[0, None],
-                 correct_time=True):
+                 fix_time=True):
         """
         Constructor method. Everything is done here.
         :param filename: Either the base filename or the full path to the file
@@ -668,12 +668,33 @@ class RefData:
                 as the raw values from optical delay (Default: True)
         :param gate: The index slices to remove the front "blip" and the noise
                 from the water vapor after the reflection.
+        :param fix_time: Whether or not to fix the time domain values not
+                having the correct dt. If True (default), the correct final time
+                value will be inferred from the filename. If False, nothing will
+                be done to the raw data. If passed as a numerical value the last
+                time vale will be taken as that value.
         """
         from base_util.base_util import read_reference_data
 
         # the array of time values and waveform amplitudes
         self.time, self.waveform = read_reference_data(filename, basedir, zero)
 
+        if type(fix_time) is bool and fix_time:
+            # use the filename to infer what the time length is supposed to be
+            # reference files are usually named as '50ps waveform.txt'
+
+            # set the max time value to be based on start time in case user
+            # does not want to zero time
+            max_time = self.time[0] + int(filename[:2])
+            self.time = np.linspace(self.time[0], max_time, len(self.time))
+
+        elif type(fix_time) is int or type(fix_time) is float:
+            # allow the user to set the last time value
+
+            max_time = self.time[0] + fix_time
+            self.time = np.linspace(self.time[0], max_time, len(self.time))
+
+        # rearrange time array so it starts at zero
         if zero:
             self.time -= self.time[0]
 
