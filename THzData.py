@@ -642,12 +642,21 @@ class DataFile(object):
             self.data = np.fromfile(fobj, bin_dtype)
 
 
-class RefData(object):
+class RefData:
     """
-    Class representation of the reference data.
+    Class representation of the reference data. User has free access to the
+    time and waveform information as in THzData class. Important instance
+    variables are.
+    time = the time array
+    waveform = the amplitude array in time domain
+    freq = the frequency array
+    freq_waveform = the amplitude array in the frequency domain
+    dt = the spacing between data points in time domain
+    df = the spacing between data points in the frequency domain
     """
 
-    def __init__(self, filename, basedir=None, zero=True, gate=[0, None]):
+    def __init__(self, filename, basedir=None, zero=True, gate=[0, None],
+                 correct_time=True):
         """
         Constructor method. Everything is done here.
         :param filename: Either the base filename or the full path to the file
