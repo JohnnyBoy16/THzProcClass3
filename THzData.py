@@ -43,8 +43,6 @@ class THzData:
         self.waveform = dat.data['waveform'][3:]
         self.wave_length = len(self.waveform[0])
 
-        self.a_scan_only = True
-        self.b_scan_on = True
         self.b_scan_dir = 'horizontal'  # B Scan direction is usually horizontal by default
 
         self.colorbar_dir = 'horizontal'
@@ -330,7 +328,7 @@ class THzData:
         :param y1: The largest y value in the new image
         :param return_indecices: If passed as True will return the indices that were used to
             generate the small C-Scan as (i0, i1, j0, j1). Where i0 is the top most index. i1 is
-            bottom most index. j0 is the right most index, and j1 is the left most.
+            bottom most index. j0 is the left most index, and j1 is the right most.
         """
 
         self.has_been_resized = True
@@ -365,6 +363,15 @@ class THzData:
         self.x -= ((self.x[0] + self.x[-1]) / 2)
         self.y -= ((self.y[0] + self.y[-1]) / 2)
 
+        # update max and min of x and y
+        self.x_min = self.x[0]
+        self.x_max = self.x[-1]
+        self.y_min = self.y[0]
+        self.y_max = self.y[-1]
+
+        # update extent
+        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
+
     def adjust_coordinates(self, i, j):
         """
         Adjusts the coordinate system so that the point at index (i, j) is at (0, 0)
@@ -373,6 +380,15 @@ class THzData:
         """
         self.x -= self.x[j]
         self.y -= self.y[i]
+
+        # reset min and max values for each coordinate
+        self.x_min = self.x[0]
+        self.x_max = self.x[-1]
+        self.y_min = self.y[0]
+        self.y_min = self.y[-1]
+
+        # reset extent
+        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
 
     def make_b_scan(self, yid, xid):
         """
