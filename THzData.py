@@ -43,8 +43,6 @@ class THzData:
         self.waveform = dat.data['waveform'][3:]
         self.wave_length = len(self.waveform[0])
 
-        self.a_scan_only = True
-        self.b_scan_on = True
         self.b_scan_dir = 'horizontal'  # B Scan direction is usually horizontal by default
 
         self.colorbar_dir = 'horizontal'
@@ -330,7 +328,7 @@ class THzData:
         :param y1: The largest y value in the new image
         :param return_indecices: If passed as True will return the indices that were used to
             generate the small C-Scan as (i0, i1, j0, j1). Where i0 is the top most index. i1 is
-            bottom most index. j0 is the right most index, and j1 is the left most.
+            bottom most index. j0 is the left most index, and j1 is the right most.
         """
 
         self.has_been_resized = True
@@ -365,6 +363,15 @@ class THzData:
         self.x -= ((self.x[0] + self.x[-1]) / 2)
         self.y -= ((self.y[0] + self.y[-1]) / 2)
 
+        # update max and min of x and y
+        self.x_min = self.x[0]
+        self.x_max = self.x[-1]
+        self.y_min = self.y[0]
+        self.y_max = self.y[-1]
+
+        # update extent
+        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
+
     def adjust_coordinates(self, i, j):
         """
         Adjusts the coordinate system so that the point at index (i, j) is at (0, 0)
@@ -373,6 +380,15 @@ class THzData:
         """
         self.x -= self.x[j]
         self.y -= self.y[i]
+
+        # reset min and max values for each coordinate
+        self.x_min = self.x[0]
+        self.x_max = self.x[-1]
+        self.y_min = self.y[0]
+        self.y_min = self.y[-1]
+
+        # reset extent
+        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
 
     def make_b_scan(self, yid, xid):
         """
@@ -642,12 +658,21 @@ class DataFile(object):
             self.data = np.fromfile(fobj, bin_dtype)
 
 
-class RefData(object):
+class RefData:
     """
-    Class representation of the reference data.
+    Class representation of the reference data. User has free access to the
+    time and waveform information as in THzData class. Important instance
+    variables are.
+    time = the time array
+    waveform = the amplitude array in time domain
+    freq = the frequency array
+    freq_waveform = the amplitude array in the frequency domain
+    dt = the spacing between data points in time domain
+    df = the spacing between data points in the frequency domain
     """
 
-    def __init__(self, filename, basedir=None, zero=True, gate=[0, None]):
+    def __init__(self, filename, basedir=None, zero=True, gate=[0, None],
+                 fix_time=True):
         """
         Constructor method. Everything is done here.
         :param filename: Either the base filename or the full path to the file
@@ -659,12 +684,33 @@ class RefData(object):
                 as the raw values from optical delay (Default: True)
         :param gate: The index slices to remove the front "blip" and the noise
                 from the water vapor after the reflection.
+        :param fix_time: Whether or not to fix the time domain values not
+                having the correct dt. If True (default), the correct final time
+                value will be inferred from the filename. If False, nothing will
+                be done to the raw data. If passed as a numerical value the last
+                time vale will be taken as that value.
         """
         from base_util.base_util import read_reference_data
 
         # the array of time values and waveform amplitudes
         self.time, self.waveform = read_reference_data(filename, basedir, zero)
 
+        if type(fix_time) is bool and fix_time:
+            # use the filename to infer what the time length is supposed to be
+            # reference files are usually named as '50ps waveform.txt'
+
+            # set the max time value to be based on start time in case user
+            # does not want to zero time
+            max_time = self.time[0] + int(filename[:2])
+            self.time = np.linspace(self.time[0], max_time, len(self.time))
+
+        elif type(fix_time) is int or type(fix_time) is float:
+            # allow the user to set the last time value
+
+            max_time = self.time[0] + fix_time
+            self.time = np.linspace(self.time[0], max_time, len(self.time))
+
+        # rearrange time array so it starts at zero
         if zero:
             self.time -= self.time[0]
 
