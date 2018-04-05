@@ -195,10 +195,11 @@ class THzData:
         At the moment this just does peak to peak voltage response
         :param: signal_type - determines how the C-Scan is calculated
                     choices:
-                        0: (default) Use Peak to Peak voltage with the front gates regardless of
-                           whether follow gate is on or not.
-                        1: Use Peak to Peak voltage with the follow gates if on. If follow gate
-                           is not on then use peak to peak voltage across entire waveform
+                        0: (default) Use Peak to Peak voltage with the front 
+                           gates regardless of whether follow gate is on or not.
+                        1: Use Peak to Peak voltage with the follow gates if on.
+                           If follow gate is not on then use peak to peak 
+                           voltage across entire waveform
                         2: avg mag (mag = abs amp)
                         3: median mag
                         4: min mag
@@ -306,8 +307,8 @@ class THzData:
 
     def make_time_of_flight_c_scan(self):
         """
-        Generates a time of flight C-Scan that shows the time of flight in picoseconds of each
-        pixel on the front surface.
+        Generates a time of flight C-Scan that shows the time of flight in 
+        picoseconds of each pixel on the front surface.
         """
         tof_index = self.waveform.argmax(axis=2)
         self.tof_c_scan = np.zeros((self.y_step, self.x_step))
@@ -318,17 +319,19 @@ class THzData:
 
     def resize(self, x0, x1, y0, y1, return_indices=False):
         """
-        Resizes the data in the bounds between x0, x1, y0, and y1. Should be used to remove the
-        edges from the data if it was over scanned. This method creates attributes waveform_small,
-        c_scan_small, and it time of flight c-scan has already been calculated it also creates
+        Resizes the data in the bounds between x0, x1, y0, and y1. Should be 
+        used to remove the edges from the data if it was over scanned. This 
+        method creates attributes waveform_small, c_scan_small, and if time of 
+        flight c-scan has already been calculated it also creates 
         tof_c_scan_small.
         :param x0: The smallest x value in the new image
         :param x1: The largest x value in the new image
         :param y0: The smallest y value in the new image
         :param y1: The largest y value in the new image
-        :param return_indecices: If passed as True will return the indices that were used to
-            generate the small C-Scan as (i0, i1, j0, j1). Where i0 is the top most index. i1 is
-            bottom most index. j0 is the left most index, and j1 is the right most.
+        :param return_indecices: If passed as True will return the indices that 
+            were used to generate the small C-Scan as (i0, i1, j0, j1). Where 
+            i0 is the top most index. i1 is bottom most index. j0 is the left 
+            most index, and j1 is the right most.
         """
 
         self.has_been_resized = True
@@ -358,7 +361,8 @@ class THzData:
 
     def center_coordinates(self):
         """
-        Centers the x and y coordinates such that (0, 0) is in the center of the image
+        Centers the x and y coordinates such that (0, 0) is in the center of 
+        the image.
         """
         self.x -= ((self.x[0] + self.x[-1]) / 2)
         self.y -= ((self.y[0] + self.y[-1]) / 2)
@@ -374,7 +378,8 @@ class THzData:
 
     def adjust_coordinates(self, i, j):
         """
-        Adjusts the coordinate system so that the point at index (i, j) is at (0, 0)
+        Adjusts the coordinate system so that the point at index (i, j) is at 
+        (0, 0).
         :param i: The index of the new center row
         :param j: The index of the new center column
         """
@@ -392,8 +397,8 @@ class THzData:
 
     def make_b_scan(self, yid, xid):
         """
-        Generates the B-Scan based on the last cursor location clicked and whether b_scan_dir is
-        horizontal or vertical
+        Generates the B-Scan based on the last cursor location clicked and 
+        whether b_scan_dir is horizontal or vertical
         :param yid: the row from which to generate B-Scan
         :param xid: the column clicked from which to generate B-Scan
         """
@@ -411,9 +416,10 @@ class THzData:
 
     def set_follow_gate(self, given_boolean):
         """
-        Sets the follow gate to be either on or off. If follow gate is changed, code will update
-        bin_range and peak_bin.
-        :param given_boolean: True: follow gate is on. False: follow gate is off.
+        Sets the follow gate to be either on or off. If follow gate is changed, 
+        code will update bin_range and peak_bin.
+        :param given_boolean: True: follow gate is on. False: follow gate is 
+            off.
         """
         # if user tries to set it to the value that it already is, do nothing
         if self.follow_gate_on == given_boolean:
@@ -435,10 +441,11 @@ class THzData:
 
     def change_gate(self, incoming_gate):
         """
-        Change the gate locations by providing an a new gate. Then updates bin_range and peak_bin
-        accordingly. This method does NOT create a new C-Scan image based on the new gate.
-        :param incoming_gate: The value of gate that is to be changed to, must be a 2x2 list or
-                    numpy array
+        Change the gate locations by providing an a new gate. Then updates 
+        bin_range and peak_bin accordingly. This method does NOT create a new 
+        C-Scan image based on the new gate.
+        :param incoming_gate: The value of gate that is to be changed to, must 
+            be a 2x2 list or numpy array
         """
         import time
 
@@ -549,9 +556,10 @@ class THzData:
 
     def find_peaks(self):
         """
-        Put FindPeaks in method so it can be called in another program. Initializes peak_bin,
-        which contains information about the location of the front surface echo, and if follow
-        gate is on, the location of the 2nd peak.
+        Put FindPeaks in method so it can be called in another program. 
+        Initializes peak_bin, which contains information about the location of 
+        the front surface echo, and if follow gate is on, the location of the 
+        2nd peak.
         """
         self.peak_bin = FindPeaks(self.waveform, self.x_step, self.y_step, self.wave_length,
                                   self.n_half_pulse, self.FSE_THRESHOLD, self.bin_range,
@@ -559,7 +567,8 @@ class THzData:
 
     def printer(self):
         """
-        Prints information about the scan to the console when a THz data class in instantiated
+        Prints information about the scan to the console when a THz data class 
+        in instantiated
         """
         print()
         print(' asn wave length =', self.wave_length, ' asn Time Length =', self.time_length,
@@ -575,8 +584,8 @@ class THzData:
 
     def header_info(self, header):
         """
-        Retrieves information about the scan from the header file that is created by the DataFile
-        class.
+        Retrieves information about the scan from the header file that is 
+        created by the DataFile class.
         :param header: the header of the data file class
         """
         # get key parameters from the header
@@ -612,8 +621,8 @@ class THzData:
 
     def delta_calculator(self):
         """
-        Calculates dt, df, n_half_pulse, and the time and frequency array that are used
-        for plotting.
+        Calculates dt, df, n_half_pulse, and the time and frequency array that 
+        are used for plotting.
         """
         # Note that len(freq) is wave_length/2 + 1. This is so it can be used with
         # numpy's rfft function. Thomas's THzProc code uses len(freq) as wave_length/2.
