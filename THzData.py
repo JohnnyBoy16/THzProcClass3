@@ -701,7 +701,14 @@ class RefData:
 
             # set the max time value to be based on start time in case user
             # does not want to zero time
-            max_time = self.time[0] + int(filename[:2])
+            if basedir is None:
+                basedir, filename = os.path.split(filename)
+
+            # get the integer value of the waveform length, information on time
+            # length of the reference signal usually starts with 'ps' or a 
+            # space.
+            max_pos = min(filename.index('p'), filename.index(' '))
+            max_time = self.time[0] + int(filename[:max_pos])
             self.time = np.linspace(self.time[0], max_time, len(self.time))
 
         elif type(fix_time) is int or type(fix_time) is float:
