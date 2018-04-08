@@ -35,6 +35,9 @@ class InterpolatedCScanFrame(ParentFrame):
         # the C-Scan image
         self.image = None
 
+        # the orientation of the colorbar for this specific frame
+        self.colorbar_dir = 'horizontal'
+
         # the colorbar for the figure
         self.colorbar = None
 
@@ -57,7 +60,7 @@ class InterpolatedCScanFrame(ParentFrame):
                                       extent=self.data.c_scan_extent)
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
-        self.colorbar = plt.colorbar(self.image, orientation=self.data.colorbar_dir)
+        self.colorbar = plt.colorbar(self.image, orientation=self.colorbar_dir)
         self.axis.grid()
         self.figure_canvas.draw()
 

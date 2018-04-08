@@ -31,6 +31,9 @@ class RawCScanFrame(ParentFrame):
         # the THzData
         self.data = data
 
+        # the orientation of the colorbar for this specific frame
+        self.colorbar_dir = 'horizontal'
+
         # the C-Scan image
         self.image = None
 
@@ -106,7 +109,7 @@ class RawCScanFrame(ParentFrame):
                                       extent=self.data.c_scan_extent, picker=True, origin='upper')
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
-        self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.data.colorbar_dir)
+        self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.colorbar_dir)
         self.axis.grid()
         self.figure_canvas.draw()
 
@@ -331,19 +334,18 @@ class RawCScanFrame(ParentFrame):
         """
         Changes the orientation of the colorbar
         """
-        # TODO should remove colorbar_dir as an attribute to THzData and make
-        # TODO an attribute of self instead. That way, Raw C-Scan and
-        # TODO interpolated C-Scan can have their own colorbar direction
-        if self.data.colorbar_dir == 'horizontal':
-            self.data.colorbar_dir = 'vertical'
+
+        if self.colorbar_dir == 'horizontal':
+            self.colorbar_dir = 'vertical'
         else:
-            self.data.colorbar_dir = 'horizontal'
+            self.colorbar_dir = 'horizontal'
 
         self.colorbar.remove()
 
         # need to specify which axis the colorbar will be drawn on. Otherwise
         # it will attach itself to the most recent figure object, which may not
         # be the figure from this frame
-        self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.data.colorbar_dir)
+        self.colorbar = plt.colorbar(self.image, ax=self.axis, 
+                                     orientation=self.colorbar_dir)
 
         self.figure_canvas.draw()
