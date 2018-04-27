@@ -1,39 +1,71 @@
-import numpy as np
 import os
 import copy
 import struct
+import sys
 import pdb
 
+import numpy as np
+
 from THzProc.thz_functions import AmpCor300, FindPeaks, ReMap
+
+# if running under python 2, need to import print function and float division
+# to keep compatibility with default python 3 style
+if sys.version[0] == '2':
+    from future import print_function, division
 
 # THINGS THAT STILL HAVE TO BE IMPLEMENTED
 # Depth Map
 # trend off != 0
 
 
-class THzData:
-    # user can provide the full path the file in filename, or provide the filename and base
-    # directory separately
-    def __init__(self, filename, basedir=None, gate=None, follow_gate_on=False, signal_type=0,
-                 center=False, print_on=True):
+# inherit object class so this will still be a new-style class even if run
+# using python 2
+class THzData(object):
+    """
+    Class representation of THz data from a tvl file. Can be used in other
+    scripts by instantiating the class like so ...
+    data = THzData(filename, basedir, etc.)
+    """
 
-        dat = DataFile(filename, basedir=basedir)  # first thing to do is open the file
+    def __init__(self, filename, basedir=None, gate=None, follow_gate_on=True, 
+                 signal_type=1, center=False, print_on=True):
+        """
+        Constructor method
+        :param filename: Either the filename or full path to the tvl file. If
+            only the filename is given, basedir must be provided
+        :param basedir: The base directory for the tvl file. If left as None
+            (default), it will be assumed that filename contains the full path
+        :param gate: The 2x2 gate that is used to bracket the front surface and
+            the portion of the inside of the sample that we are interested in.
+        :param follow_gate_on: If True (default), follow gate is on. If False,
+            follow gate is off.
+        :param center: If True, will adjust x and y axis values so that (0, 0)
+            is at the center of the C-Scan image (default False)
+        :param print_on: If True (default), will print information about the
+            scan to the console, such as number of X & Y steps, resolution, etc.
+        """
 
         # handle what happens if they don't pass through gate
         if gate is None:
-            self.gate = [[100, 1500], [700, 900]]
+            self.gate = [[100, 1500], [-200, 200]]
 
         # if the user passed through a value for gate, make sure that it is 2x2
         elif np.shape(gate) != (2, 2):
             raise ValueError('gate must by a 2x2 list or numpy array!')
         else:
-            self.gate = gate
+            # make self.gate a separate copy of the gate that is passed into
+            # the constructor. Otherwise if self.gate is changed by this program
+            # the variable that was passed in will change as well
+            self.gate = copy.deepcopy(gate)
 
         # make sure that follow_gate_on is either True or False
         if not isinstance(follow_gate_on, bool):
             raise ValueError('follow_gate_on must be of a boolean!')
         else:
             self.follow_gate_on = follow_gate_on
+
+        # Open the file using TeraView's DataFile class
+        dat = DataFile(filename, basedir=basedir)
 
         # set signal_type to pass to make_c_scan()
         self.signal_type = signal_type
@@ -43,14 +75,15 @@ class THzData:
         self.waveform = dat.data['waveform'][3:]
         self.wave_length = len(self.waveform[0])
 
-        self.b_scan_dir = 'horizontal'  # B Scan direction is usually horizontal by default
+        # B Scan direction is usually horizontal by default
+        self.b_scan_dir = 'horizontal'
 
-        # whether or not to correct for the excessive amplification on the edges of the
-        # 300 ps waveforms
+        # whether or not to correct for the excessive amplification on the 
+        # edges of the 300 ps waveforms
         self.amp_correction300_on = True
 
-        # initialize all of the variables that are wanted from the header, these are calculated in
-        # the method header_info
+        # initialize all of the variables that are wanted from the header, 
+        # these are calculated in the method header_info()
         self.time_length = None  # the time length of the scan in ps
         self.x_res = None  # the attempted spacing between x points in the scan in mm
         self.y_res = None  # the attempted spacing between y points in the scan in mm
@@ -91,19 +124,18 @@ class THzData:
         # resize method has been called
         self.has_been_resized = False
 
-        # CONSTANTS --------------------------------------------------------------------------------
+        # CONSTANTS ------------------------------------------------------------
 
         # 1 for the positive peak, 2 for the negative peak, prefer 1
         self.PICK_PEAK = 1
 
-        # provides algorithm for removing baseline trend in near-field imaging. leave 0 for now
+        # provides algorithm for removing baseline trend in near-field imaging. 
+        # leave 0 for now
         self.TREND_OFF = 0
 
         # VERY constant: do not change unless you have a good reason to
         self.FSE_TOLERANCE = -0.17
 
-        # if true, removes excess amplitude on the ends of each waveform for a 300ps scan
-        self.AMP_CORRECTION_300 = True
         # parameters to pass to the AmpCor300 function
         self.AMP_CORRECTION_300_PAR = [0., 35., 5.0, 1., 240., 300., 1., 4.5, 4.]
 
@@ -665,7 +697,9 @@ class DataFile(object):
             self.data = np.fromfile(fobj, bin_dtype)
 
 
-class RefData:
+# explicitly inherit object so it will be a new-style class even if run using
+# python 2
+class RefData(object):
     """
     Class representation of the reference data. User has free access to the
     time and waveform information as in THzData class. Important instance
@@ -673,9 +707,10 @@ class RefData:
     time = the time array
     waveform = the amplitude array in time domain
     freq = the frequency array
-    freq_waveform = the amplitude array in the frequency domain
+    freq_waveform = the complex amplitude array in the frequency domain
     dt = the spacing between data points in time domain
     df = the spacing between data points in the frequency domain
+    n_points = the number of points in the time domain waveform
     """
 
     def __init__(self, filename, basedir=None, zero=True, gate=[0, None],
@@ -724,7 +759,10 @@ class RefData:
             max_time = self.time[0] + fix_time
             self.time = np.linspace(self.time[0], max_time, len(self.time))
 
-        # rearrange time array so it starts at zero
+        # rearrange time array so it starts at zero. When a waveform is saved
+        # in the TeraView software it saves the time from some absolute
+        # reference point based on mirror position (I think). So the first value
+        # in the time array probably won't be zero.
         if zero:
             self.time -= self.time[0]
 
