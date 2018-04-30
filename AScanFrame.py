@@ -11,8 +11,8 @@ from THzProc.ParentFrame import ParentFrame
 
 class AScanFrame(ParentFrame):
     """
-    Displays the A-Scan of the last point clicked in the gray scale C-Scan image. Also contains
-    the movable gates that update the C-Scan.
+    Displays the A-Scan of the last point clicked in the gray scale C-Scan 
+    image. Also contains the movable gates that update the C-Scan.
     """
 
     def __init__(self, holder, data, a_scan_only=True, title=None):
@@ -104,7 +104,8 @@ class AScanFrame(ParentFrame):
 
         # wxPython events
         self.Bind(wx.EVT_MENU, self.switch_a_scan_view, self.a_scan_view_menu)
-        self.Bind(wx.EVT_MENU, self.change_index_system, self.location_view_menu)
+        self.Bind(wx.EVT_MENU, self.change_index_system, self.index_view_menu)
+        self.Bind(wx.EVT_MENU, self.on_change_gate_button, self.change_gate_menu)
 
     def modify_menu(self):
         """
@@ -117,36 +118,46 @@ class AScanFrame(ParentFrame):
                                             'Turn A-Scan on/off')
         options_menu.Append(self.a_scan_view_menu)
 
-        self.location_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Indexing Option',
-                                              'Change location description from (x, y) to (i, j)')
-        options_menu.Append(self.location_view_menu)
+        self.index_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Indexing Option',
+                                           'Change location description from (x, y) to (i, j)')
+        options_menu.Append(self.index_view_menu)
+
+        self.change_gate_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Change Gate', 'Change Gate')
+        options_menu.Append(self.change_gate_menu)
 
         self.menu_bar.Append(options_menu, '&Options')
 
         self.SetMenuBar(self.menu_bar)
         self.Fit()
 
-    def plot(self, i, j):
+    def plot(self, i=None, j=None):
         """
         Plot a waveform from data matrix location (i, j, :)
         :param i: The row from which to plot the waveform
         :param j: The column from which to plot the waveform
         """
 
-        if not self.is_initialized:  # set value, so motion handler method can function
+        # set value, so motion handler method can function
+        if not self.is_initialized:
             self.is_initialized = True
 
-        # store the (i, j) that were clicked on, this way the same line can be plotted when the
-        # gate is changed
-        self.i_index = i
-        self.j_index = j
+        if i is None and j is None:
+            i = self.i_index
+            j = self.j_index
+        else:
+            # store the (i, j) that were clicked on, this way the same line can be 
+            # replotted when the gate is changed
+            self.i_index = i
+            self.j_index = j
 
         self.time_plot(i, j)
 
         if not self.a_scan_only:
             self.freq_plot(i, j)
 
-        # leave draw() call here
+        # have call to draw() here as opposed to being in time_plot() or
+        # freq_plot() so it will always be called regardless of whether or not
+        # frequency domain plotting is on
         self.figure_canvas.draw()
 
     def time_plot(self, i, j):
@@ -201,7 +212,8 @@ class AScanFrame(ParentFrame):
 
     def freq_plot(self, i, j):
         """
-        Plots the frequency domain information between the active time domain gates
+        Plots the frequency domain information between the active time domain 
+        gates
         :param i: The row
         :param j: The column
         """
@@ -272,10 +284,19 @@ class AScanFrame(ParentFrame):
         if self.is_initialized:
             self.plot(self.i_index, self.j_index)
 
+    def on_change_gate_button(self, event):
+        """
+        Opens a dialog box that allows the user to type in a new gate and set
+        the gate at a specific location
+        """
+
+        ChangeGateFrame(self, self.holder, self.data)
+
     def motion_handler(self, event):
         """
-        Prints the current (x,y) values that the mouse is over to the status bar along with the
-        amplitude of the waveform at that time.
+        Prints the current (x,y) values that the mouse is over to the status bar
+        along with the amplitude of the waveform at that time.
+        :param event: a matplotlib event
         """
 
         # if no C-Scan point has been clicked on yet, do nothing
@@ -284,6 +305,9 @@ class AScanFrame(ParentFrame):
 
         xid = event.xdata
         yid = event.ydata
+
+        # if user clicks in the window but outside of the plot itself, xid & 
+        # will be None
         if xid is not None and yid is not None:
             if xid < 0:
                 t_index = 0
@@ -429,5 +453,146 @@ class AScanFrame(ParentFrame):
         if event.xdata is None or event.ydata is None:
             return
 
+        # slide the line around with the mouse
         self.line_held.set_xdata([event.xdata, event.xdata])
+            
+        # update figure
         self.figure_canvas.draw()
+
+
+class ChangeGateFrame(wx.Frame):
+    """
+    Frame to hold the change gate panel
+    """
+
+    def __init__(self, parent, holder, data):
+        """
+        Constructor Method
+        :param parent: The parent frame that called this frame
+        :param holder: The holder class that is binding everything together
+        :param data: An instance of the THzData class
+        """
+        # this frame exists to hold the ChangeGatePanel that's about it
+
+        super().__init__(parent, title='Change Gates ...', size=(450, 200))
+
+        self.holder = holder
+
+        self.panel = _ChangeGatePanel(self, data)
+
+        self.Show(True)
+
+
+# Private class
+class _ChangeGatePanel(wx.Panel):
+    """
+    Private class that contains type boxes for the user to manually type
+    in values to change the gate to
+    """
+
+    def __init__(self, parent, data):
+        """
+        Constructor method
+        :param parent: The parent frame that this panel is being called by
+        :param data: An instance of the THzData class
+        """
+        super().__init__(parent)
+
+        # store the parent Frame that created this panel
+        self.parent = parent
+
+        # The THz Data
+        self.data = data
+
+        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.gbs = wx.GridBagSizer(vgap=10, hgap=10)
+
+        self.add_controls()
+        self.bind_controls()
+
+        # set the main sizer to the panel
+        self.SetSizer(self.main_sizer)
+
+    def add_controls(self):
+        """
+        Add the Text Control boxes to the main frame
+        """
+        # text boxes for the front and back lead gates
+        self.front1_text_control = wx.TextCtrl(self, -1)
+        self.front2_text_control = wx.TextCtrl(self, -1)
+
+        # text boxes for the front and back follow gates
+        self.follow1_text_control = wx.TextCtrl(self, -1)
+        self.follow2_text_control = wx.TextCtrl(self, -1)
+
+        # OK and cancel buttons
+        self.ok_button = wx.Button(self, label='OK')
+        self.cancel_button = wx.Button(self, label='Cancel')
+
+        # set the text for the front and follow gate text control boxes to
+        # contain the position of the gates when the panel was created
+        self.front1_text_control.SetValue(str(self.data.gate[0][0]))
+        self.front2_text_control.SetValue(str(self.data.gate[0][1]))
+        self.follow1_text_control.SetValue(str(self.data.gate[1][0]))
+        self.follow2_text_control.SetValue(str(self.data.gate[1][1]))
+
+        self.gbs.Add(wx.StaticText(self, -1, 'Front Gate 1'), (0, 0))
+        self.gbs.Add(self.front1_text_control, (0, 1))
+
+        self.gbs.Add(wx.StaticText(self, -1, 'Front Gate 2'), (0, 2))
+        self.gbs.Add(self.front2_text_control, (0, 3))
+
+        self.gbs.Add(wx.StaticText(self, -1, 'Follow Gate 1'), (1, 0))
+        self.gbs.Add(self.follow1_text_control, (1, 1))
+
+        self.gbs.Add(wx.StaticText(self, -1, 'Follow Gate 2'), (1, 2))
+        self.gbs.Add(self.follow2_text_control, (1, 3))
+
+        self.gbs.Add(self.ok_button, (2, 0))
+        self.gbs.Add(self.cancel_button, (2, 1))
+
+        self.main_sizer.Add(self.gbs, 1, wx.ALL | wx.EXPAND, 10)
+
+    def bind_controls(self):
+        """
+        Binds the controls to their appropriate method handler
+        """
+        self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok_button)
+        self.cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel_button)
+
+    def on_cancel_button(self, event):
+        """
+        Closes the dialog and does nothing but exit
+        :param event: a wxPython event
+        """
+        # call the parent destroy method to close the window
+        self.parent.Destroy()
+
+    def on_ok_button(self, event):
+        """
+        Attempt to get the new gate values and call THzData's change_gate method
+        to change the gate, then exit the Frame
+        """
+
+        # pre-allocate gate as a list
+        gate = [[None, None], [None, None]] 
+
+        gate[0][0] = int(self.front1_text_control.GetValue())
+        gate[0][1] = int(self.front2_text_control.GetValue())
+
+        gate[1][0] = int(self.follow1_text_control.GetValue())
+        gate[1][1] = int(self.follow2_text_control.GetValue())
+
+        # change the gate
+        self.data.change_gate(gate)
+
+        # create the new C-Scan
+        self.data.make_c_scan()
+
+        # update the A-Scan, Raw C-Scan, and Interpolated C-Scan frames
+        self.parent.holder.a_scan_frame.plot()
+        self.parent.holder.raw_c_scan_frame.update()
+        self.parent.holder.interpolated_c_scan_frame.update()
+
+        # call the parent frame's destroy method to close the window
+        self.parent.Destroy()
