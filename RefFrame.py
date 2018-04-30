@@ -14,7 +14,7 @@ class ReferenceFrame(ParentFrame):
     domain waveform.
     """
 
-    def __init__(self, filename, basedir=None, title=None, is_stand_alone=False):
+    def __init__(self, filename, basedir=None, title=None):
         """
         Constructor method
         :param filename: Either the name of the file or the full path to the
