@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import os
 import copy
 import struct
@@ -7,11 +8,6 @@ import pdb
 import numpy as np
 
 from THzProc.thz_functions import AmpCor300, FindPeaks, ReMap
-
-# if running under python 2, need to import print function and float division
-# to keep compatibility with default python 3 style
-if sys.version[0] == '2':
-    from future import print_function, division
 
 # THINGS THAT STILL HAVE TO BE IMPLEMENTED
 # Depth Map
@@ -219,7 +215,7 @@ class THzData(object):
         # Generate the C-Scan
         self.make_c_scan(self.signal_type)
 
-    def make_c_scan(self, signal_type):
+    def make_c_scan(self, signal_type=None):
         """
         Generates the C-Scan based on the gate location and signal type
         At the moment this just does peak to peak voltage response
@@ -239,6 +235,12 @@ class THzData(object):
                         8: min amp
                         9: max amp
         """
+
+        # if user does not pass through a value default to the one that is set
+        # by the class instance
+        if signal_type is None:
+            signal_type = self.signal_type
+
         # TODO: work on vectorizing code to avoid the for loops
         # it seems that if using peak_bin we can't vectorize, look into solution for this
 
