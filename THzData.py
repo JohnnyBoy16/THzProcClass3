@@ -133,7 +133,8 @@ class THzData(object):
         self.FSE_TOLERANCE = -0.17
 
         # parameters to pass to the AmpCor300 function
-        self.AMP_CORRECTION_300_PAR = [0., 35., 5.0, 1., 240., 300., 1., 4.5, 4.]
+        self.AMP_CORRECTION_300_PAR = [0., 35., 5.0, 1., 240., 300., 1., 4.5, 
+                                       4.]
 
         self.X_CORRECTION_TOLERANCE = 0.1
         self.PULSE_LENGTH = 3  # 3 is the original value from Thomas's THzProc
@@ -157,9 +158,6 @@ class THzData(object):
         # tolerance ratio for number of actual scan points in a X line compared to how many are
         # supposed to be in that line
         self.X_RATIO_LIMIT = 0.8
-
-        # the height of the figure in inches
-        self.FIGURE_HEIGHT = 8
 
         # a small value that is used to see if floating points are close together.
         self.TINY = 1e-4
