@@ -1,18 +1,20 @@
 """
-Contains functions that are defined in Dr. Thomas Chiou's THzProc code. These functions were put
-into this file so that they can be called by another program.
+Contains functions that are defined in Dr. Thomas Chiou's THzProc code. These
+functions were put into this file so that they can be called by another program.
 
 Function Descriptions:
   ReMap -
-      The data that is output by the TeraView Software does not have the data points aligned
-      correctly. Remap takes the waveform that is output by the TeraView software and realigns the
-      data points to produce a cleaner image.
+      The data that is output by the TeraView Software does not have the data
+      points aligned correctly. Remap takes the waveform that is output by the
+      TeraView software and realigns the data points to produce a cleaner image.
   AmpCor300 -
-      The waveforms that are output by the TeraView Software have excessive amplification on each
-      end of the waveform if the time window is large (around 300ps). AmpCor300 fits an
-      exponential on both sides of the waveform to remove the excess amplification.
+      The waveforms that are output by the TeraView Software have excessive
+      amplification on each end of the waveform if the time window is large
+      (around 300ps). AmpCor300 fits an exponential on both sides of the
+      waveform to remove the excess amplification.
   FindPeaks -
-      Finds peaks in each waveform within the region that is specified by BinRange
+      Finds peaks in each waveform within the region that is specified by
+      BinRange
 """
 import pdb
 import numpy as np
