@@ -130,22 +130,30 @@ class ParentFrame(wx.Frame):
         Opens a new frame that shows the time and frequency information of a
         reference txt file
         """
+        # need to have this import statement here, otherwise there will be
+        # circular imports between RefFrame and ParentFrame
         from THzProc.RefFrame import ReferenceFrame
 
-        dlg = wx.FileDialog(self, 'Open Reference', wildcard='txt files (*.txt)|*.txt',
+        dlg = wx.FileDialog(self, 'Open Reference', 
+                            wildcard='txt files (*.txt)|*.txt',
                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+
+        # set the default directory to the reference directory
+        # this is the directory that the dialog will open in
+        dlg.SetDirectory('C:\\Work\\Refs')
 
         if dlg.ShowModal() == wx.ID_CANCEL:
             return
 
         full_path = dlg.GetPath()
 
-        ReferenceFrame(full_path, is_stand_alone=False)
+        ReferenceFrame(full_path)
 
     @staticmethod
     def on_exit(event):
         """
-        Terminates the program when the user clicks the exit option from the file menu
+        Terminates the program when the user clicks the exit option from the 
+        file menu
         """
         for window in wx.GetTopLevelWindows():
             window.Destroy()
