@@ -115,11 +115,21 @@ class RawCScanFrame(ParentFrame):
 
     def update(self):
         """
-        Updates the figure, by clearing the axis and remaking stuff, including the colorbar
+        Updates the figure, by clearing the axis and remaking stuff, including
+        the colorbar
         """
-        # At the moment it is necessary to have a separate method from plot(), because it appears
-        # that there must be a call to colorbar.update_bruteforce() to have the colorbar actually
-        # update. Using self.axis.cla() does not actually remove the colorbar
+        # At the moment it is necessary to have a separate method from plot(),
+        # because it appears that there must be a call to
+        # colorbar.update_bruteforce() to have the colorbar actually update.
+        # Using self.axis.cla() does not actually remove the colorbar.
+
+        # Other methods of updating the plot involve changing the data of
+        # the image object with (image.set_data(new_data)), and then manually
+        # updating the colorbar range with colorbar.set_clim(vmin, vmax), but
+        # this seems to result in the colorbar losing its connection to the
+        # the axis on which it is attached for some reason, the axis that is
+        # associated with the colorbar seems to become None type. Then when
+        # change_colorbar_dir is called, it will crash.
 
         self.axis.cla()
         self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
@@ -150,8 +160,8 @@ class RawCScanFrame(ParentFrame):
 
     def motion_handler(self, event):
         """
-        Prints the current (x,y) values that the mouse is over to the status bar along with the
-        pixel value at that (x,y) location.
+        Prints the current (x,y) values that the mouse is over to the status
+        bar along with the pixel value at that (x,y) location.
         """
         xid = event.xdata
         yid = event.ydata
@@ -182,6 +192,37 @@ class RawCScanFrame(ParentFrame):
             self.holder.a_scan_frame.plot(self.i_index, self.j_index)
             self.holder.b_scan_frame.plot(self.i_index, self.j_index)
 
+    def flash_b_scan_line(self):
+        """
+        Flashes a horizontal or vertical line (depending or the orientation
+        that is currently in use) to correspond with the location of the B-Scan
+        """
+        # using a hex color for the color because using 'g' was not bright
+        # enough in my opinion. Hex color '#81ff6b' corresponds to bright
+        # green
+
+        n_flashes = 3
+
+        if self.data.b_scan_dir == 'horizontal':
+            for i in range(n_flashes):
+                line = self.axis.axhline(self.data.y[self.i_index],
+                                         color='#81ff6b', linestyle='--')
+                self.figure_canvas.draw()
+                plt.pause(0.2)
+                line.remove()
+                self.figure_canvas.draw()
+                plt.pause(0.2)
+
+        if self.data.b_scan_dir == 'vertical':
+            for i in range(n_flashes):
+                line = self.axis.axvline(self.data.x[self.j_index],
+                                         color='#81ff6b', linestyle='--')
+                self.figure_canvas.draw()
+                plt.pause(0.2)
+                line.remove()
+                self.figure_canvas.draw()
+                plt.pause(0.2)
+
     def on_rescale_click(self, event):
         """
         Rescales the colorbar with the maximum and minimum values that are
@@ -192,8 +233,8 @@ class RawCScanFrame(ParentFrame):
         x_bounds = np.array(self.axis.get_xlim())
         y_bounds = np.array(self.axis.get_ylim())
 
-        # since the y_bounds are normally inverted to show the data how we see it in the lab
-        # rearrange them in low -> high order
+        # since the y_bounds are normally inverted to show the data how we see
+        # it in the lab rearrange them in low -> high order
         if y_bounds[0] > y_bounds[1]:
             temp = y_bounds[0]
             y_bounds[0] = y_bounds[1]
@@ -214,9 +255,13 @@ class RawCScanFrame(ParentFrame):
         # want to include the bounds in calculation, so add 1 to be inclusive
         area = self.data.c_scan[i0:i1+1, j0:j1+1]
 
-        # resent vmin and vmax to be the min and max of area inside of plot bounds
+        # resent vmin and vmax to be the min and max of area inside of plot
+        # bounds
         self.image.set_clim(vmin=area.min(), vmax=area.max())
-        self.colorbar.update_normal(self.image)  # update colorbar with new vmin and vmax values
+
+        # update colorbar with new vmin and vmax values
+        self.colorbar.update_normal(self.image)
+
         self.figure_canvas.draw()  # redraw image
 
     def on_cscan_signal_noise_click(self, event):
@@ -345,7 +390,7 @@ class RawCScanFrame(ParentFrame):
         # need to specify which axis the colorbar will be drawn on. Otherwise
         # it will attach itself to the most recent figure object, which may not
         # be the figure from this frame
-        self.colorbar = plt.colorbar(self.image, ax=self.axis, 
+        self.colorbar = plt.colorbar(self.image, ax=self.axis,
                                      orientation=self.colorbar_dir)
 
         self.figure_canvas.draw()
