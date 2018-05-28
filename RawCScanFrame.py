@@ -178,19 +178,25 @@ class RawCScanFrame(ParentFrame):
         """
         Allows the user to click on the C-Scan and update the A-Scan
         """
+        # if the user does not click within the axis of the plot just return
+        # otherwise lots of error will be thrown
+        if not event.inaxis:
+            return
+
+        # if the user has either the zoom or pan button selected just return
+        # because we don't want to change A-Scan when the user is zooming or
+        # panning around
+        if self.toolbar._active == 'ZOOM' or self.toolbar._active == 'PAN':
+            return
+
         x_data = event.xdata
         y_data = event.ydata
 
-        # apparent method to check if matplotlib toolbar is clicked
-        # doesn't seem to work with the wx backend yet
-        # print(self.figure_canvas.manager.toolmanager.active_toggle())
+        self.i_index = int((y_data - self.data.y_min) / self.data.dy)
+        self.j_index = int((x_data - self.data.x_min) / self.data.dx)
 
-        if x_data and y_data is not None:  # make sure that the user clicks inside of the plot
-            self.i_index = int((y_data - self.data.y_min) / self.data.dy)
-            self.j_index = int((x_data - self.data.x_min) / self.data.dx)
-
-            self.holder.a_scan_frame.plot(self.i_index, self.j_index)
-            self.holder.b_scan_frame.plot(self.i_index, self.j_index)
+        self.holder.a_scan_frame.plot(self.i_index, self.j_index)
+        self.holder.b_scan_frame.plot(self.i_index, self.j_index)
 
     def flash_b_scan_line(self):
         """
