@@ -11,7 +11,7 @@ from THzProc.ParentFrame import ParentFrame
 
 class AScanFrame(ParentFrame):
     """
-    Displays the A-Scan of the last point clicked in the gray scale C-Scan 
+    Displays the A-Scan of the last point clicked in the gray scale C-Scan
     image. Also contains the movable gates that update the C-Scan.
     """
 
@@ -145,8 +145,8 @@ class AScanFrame(ParentFrame):
             i = self.i_index
             j = self.j_index
         else:
-            # store the (i, j) that were clicked on, this way the same line can be 
-            # replotted when the gate is changed
+            # store the (i, j) that were clicked on, this way the same line
+            # can be replotted when the gate is changed
             self.i_index = i
             self.j_index = j
 
@@ -162,8 +162,8 @@ class AScanFrame(ParentFrame):
 
     def time_plot(self, i, j):
 
-        xloc = self.data.x[self.j_index]
-        yloc = self.data.y[self.i_index]
+        xloc = self.data.x[j]
+        yloc = self.data.y[i]
 
         # can have the title give the (x, y) location or (i, j) location
         # this could also be updated to show both if one wanted to
@@ -202,17 +202,23 @@ class AScanFrame(ParentFrame):
             self.time_axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0,
                                    picker=2)
 
-        # if follow gate is on and using peak to peak voltage within follow gates plot the peak
-        # locations
+        # if follow gate is on and using peak to peak voltage within follow
+        # gates plot the peak locations
         if self.data.follow_gate_on and self.data.signal_type == 1:
             pos_peak = self.data.peak_bin[0, 1, i, j]
             neg_peak = self.data.peak_bin[1, 1, i, j]
             self.time_axis.plot(self.data.time[pos_peak], self.data.waveform[i, j, pos_peak], 'b+')
             self.time_axis.plot(self.data.time[neg_peak], self.data.waveform[i, j, neg_peak], 'gx')
 
+            # now plot the peaks in the front gate
+            pos_peak = self.data.peak_bin[0, 0, i, j]
+            neg_peak = self.data.peak_bin[1, 0, i, j]
+            self.time_axis.plot(self.data.time[pos_peak], self.data.waveform[i, j, pos_peak], 'k*')
+            self.time_axis.plot(self.data.time[neg_peak], self.data.waveform[i, j, neg_peak], 'k*')
+
     def freq_plot(self, i, j):
         """
-        Plots the frequency domain information between the active time domain 
+        Plots the frequency domain information between the active time domain
         gates
         :param i: The row
         :param j: The column
@@ -306,7 +312,7 @@ class AScanFrame(ParentFrame):
         xid = event.xdata
         yid = event.ydata
 
-        # if user clicks in the window but outside of the plot itself, xid & 
+        # if user clicks in the window but outside of the plot itself, xid &
         # will be None
         if xid is not None and yid is not None:
             if xid < 0:
@@ -455,7 +461,7 @@ class AScanFrame(ParentFrame):
 
         # slide the line around with the mouse
         self.line_held.set_xdata([event.xdata, event.xdata])
-            
+
         # update figure
         self.figure_canvas.draw()
 
@@ -575,7 +581,7 @@ class _ChangeGatePanel(wx.Panel):
         """
 
         # pre-allocate gate as a list
-        gate = [[None, None], [None, None]] 
+        gate = [[None, None], [None, None]]
 
         gate[0][0] = int(self.front1_text_control.GetValue())
         gate[0][1] = int(self.front2_text_control.GetValue())
