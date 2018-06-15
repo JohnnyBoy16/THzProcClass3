@@ -66,9 +66,9 @@ class ParentFrame(wx.Frame):
 
     def initialize_figure(self, nrows=1, ncols=1):
         """
-        Create a figure, adds an axis or axes to that figure and initializes a figure canvas. If
-        either nrows or ncols is greater than 1, axis attribute will be an array containing axis
-        instances.
+        Create a figure, adds an axis or axes to that figure and initializes a
+        figure canvas. If either nrows or ncols is greater than 1, axis
+        attribute will be an array containing axis instances.
         :param nrows: The number of rows for the subplot. Default: 1
         :param ncols: The number of columns for the subplot. Default: 1
         """
@@ -106,11 +106,13 @@ class ParentFrame(wx.Frame):
         """
         file_menu = wx.Menu()
 
-        self.open_ref_menu_button = wx.MenuItem(file_menu, wx.ID_ANY, 'Open Ref',
+        self.open_ref_menu_button = wx.MenuItem(file_menu, wx.ID_ANY,
+                                                'Open Ref',
                                                 'Open a Reference File')
         file_menu.Append(self.open_ref_menu_button)
 
-        self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit', 'Terminate the Program')
+        self.exit_menu = wx.MenuItem(file_menu, wx.ID_EXIT, 'E&xit',
+                                     'Terminate the Program')
         file_menu.Append(self.exit_menu)
 
         self.menu_bar = wx.MenuBar()
@@ -134,7 +136,7 @@ class ParentFrame(wx.Frame):
         # circular imports between RefFrame and ParentFrame
         from THzProc.RefFrame import ReferenceFrame
 
-        dlg = wx.FileDialog(self, 'Open Reference', 
+        dlg = wx.FileDialog(self, 'Open Reference',
                             wildcard='txt files (*.txt)|*.txt',
                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
 
@@ -152,7 +154,7 @@ class ParentFrame(wx.Frame):
     @staticmethod
     def on_exit(event):
         """
-        Terminates the program when the user clicks the exit option from the 
+        Terminates the program when the user clicks the exit option from the
         file menu
         """
         for window in wx.GetTopLevelWindows():
