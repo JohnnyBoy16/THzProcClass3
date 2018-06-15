@@ -32,7 +32,7 @@ class RawCScanFrame(ParentFrame):
         self.data = data
 
         # the orientation of the colorbar for this specific frame
-        self.colorbar_dir = 'horizontal'
+        self.colorbar_dir = 'vertical'
 
         # the C-Scan image
         self.image = None
@@ -180,7 +180,7 @@ class RawCScanFrame(ParentFrame):
         """
         # if the user does not click within the axis of the plot just return
         # otherwise lots of error will be thrown
-        if not event.inaxis:
+        if not event.inaxes:
             return
 
         # if the user has either the zoom or pan button selected just return
