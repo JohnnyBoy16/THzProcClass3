@@ -101,9 +101,12 @@ class THzData(object):
 
         self.dt = None  # the spacing between time values
         self.time = None  # array of time values that is used for plotting
-        self.freq = None  # array of frequency values that is used for ploting
+        self.freq = None  # array of frequency values that is used for plotting
         self.df = None  # spacing between frequency values
-        self.n_half_pulse = None  # the number of half pulses in the scan
+
+        # the number of data points in a half pulse 
+        self.n_half_pulse = int
+        
         self.true_x_res = None  # the spacing between x points after Remap is called
         self.true_y_res = None  # the spacing between y points after Remap is called
         self.dx = None  # the average difference between x data points
@@ -111,10 +114,8 @@ class THzData(object):
         self.b_scan = None  # the B-Scan values
         self.tof_c_scan = None  # the time of flight of the front surface
 
-        # the largest frequency that you would like the frequency plots to go up to
-        self.work_freq = 3.0
-
-        # flags peaks (the FSE always and peaks in follow gate if follow gate is on)
+        # if True there will be little crosses displayed on the peak locations
+        # in the lead gates and the follow
         self.flag_peak_on = True
 
         # incoming angle of the THz Beam (17.5 degrees) converted to radians
@@ -142,11 +143,12 @@ class THzData(object):
                                        4.]
 
         self.X_CORRECTION_TOLERANCE = 0.1
+ 
+        # the length of pulse that is used to bracket the 
         self.PULSE_LENGTH = 3  # 3 is the original value from Thomas's THzProc
-        # self.PULSE_LENGTH = -1  # set to be negative so negative peak is always within follow gate
 
-        # difference that a point is allowed to deviate (as a ratio with respect to resolution)
-        # from its desired coordinate
+        # difference that a point is allowed to deviate (as a ratio with 
+        # respect to resolution) from its desired coordinate
         self.X_DIFFERENCE_TOLERANCE = 0.4
         self.Y_DIFFERENCE_TOLERANCE = 0.3
 
@@ -154,19 +156,19 @@ class THzData(object):
         # this is nlim from base THzProc
         self.N_LIMIT = 0.8
 
-        # half pulse width for bracketing the follower signal (usually the front surface echo)
-        # this value was originally 2 in Thomas's THzProc, I am changing to
-        # make the time gate looking for max and min peak smaller
-        self.HALF_PULSE = 2  # don't change unless you have a good reason to
+        # half pulse width for bracketing the front surface echo this value was
+        # originally 2 in Thomas's THzProc
+        self.HALF_PULSE = 2 
 
         # threshold for lead gate signal
         self.FSE_THRESHOLD = 0.5
 
-        # tolerance ratio for number of actual scan points in a X line compared to how many are
-        # supposed to be in that line
+        # tolerance ratio for number of actual scan points in a X line compared 
+        # to how many are supposed to be in that line
         self.X_RATIO_LIMIT = 0.8
 
-        # a small value that is used to see if floating points are close together.
+        # a small value that is used to see if floating points are close 
+        # together.
         self.TINY = 1e-4
 
         # END OF CONSTANTS -------------------------------------------------------------------------
