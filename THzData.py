@@ -25,7 +25,7 @@ class THzData(object):
     """
 
     def __init__(self, filename, basedir=None, gate=None, follow_gate_on=True,
-                 signal_type=1, center=False, print_on=True):
+                 signal_type=1, center=False, print_on=True, **kwargs):
         """
         Constructor method
         :param filename: Either the filename or full path to the tvl file. If
@@ -104,9 +104,9 @@ class THzData(object):
         self.freq = None  # array of frequency values that is used for plotting
         self.df = None  # spacing between frequency values
 
-        # the number of data points in a half pulse 
+        # the number of data points in a half pulse
         self.n_half_pulse = int
-        
+
         self.true_x_res = None  # the spacing between x points after Remap is called
         self.true_y_res = None  # the spacing between y points after Remap is called
         self.dx = None  # the average difference between x data points
@@ -143,11 +143,23 @@ class THzData(object):
                                        4.]
 
         self.X_CORRECTION_TOLERANCE = 0.1
- 
-        # the length of pulse that is used to bracket the 
-        self.PULSE_LENGTH = 3  # 3 is the original value from Thomas's THzProc
 
-        # difference that a point is allowed to deviate (as a ratio with 
+        # half pulse width for bracketing the front surface echo this value was
+        # originally 2 in Thomas's THzProc
+        self.HALF_PULSE = 2
+
+        # the number of half pulses within which to search for the peak to
+        # peak value within the follow gate. For example if the maximum peak
+        # in the follow gates is found, then the minimum peak that defines the
+        # Vpp with can only a maximum of PULSE_LENGTH * HALF_PULSE ps away. The
+        # length of the half pulse is defined by HALF_PULSE
+        if 'pulse_length' in kwargs:
+            self.PULSE_LENGTH = kwargs['pulse_length']
+        else:
+            # 3 is the original value from Thomas's THzProc
+            self.PULSE_LENGTH = 3
+
+        # difference that a point is allowed to deviate (as a ratio with
         # respect to resolution) from its desired coordinate
         self.X_DIFFERENCE_TOLERANCE = 0.4
         self.Y_DIFFERENCE_TOLERANCE = 0.3
@@ -156,18 +168,14 @@ class THzData(object):
         # this is nlim from base THzProc
         self.N_LIMIT = 0.8
 
-        # half pulse width for bracketing the front surface echo this value was
-        # originally 2 in Thomas's THzProc
-        self.HALF_PULSE = 2 
-
         # threshold for lead gate signal
         self.FSE_THRESHOLD = 0.5
 
-        # tolerance ratio for number of actual scan points in a X line compared 
+        # tolerance ratio for number of actual scan points in a X line compared
         # to how many are supposed to be in that line
         self.X_RATIO_LIMIT = 0.8
 
-        # a small value that is used to see if floating points are close 
+        # a small value that is used to see if floating points are close
         # together.
         self.TINY = 1e-4
 
@@ -567,12 +575,19 @@ class THzData(object):
         # TODO: in the future need to add functions for finding the front peak
         #       and the peaks in the follow gate, as separate functions.
 
+        # if PULSE_LENGTH < 0, the maximum and minimum peaks will be found with
+        # the follow gate regardless of how far apart they are from each other.
+        # If PULSE_LENGTH > 0, the maximum and minimum peaks will only be that
+        # far apart from each other and will also be inside of the follow gate
+
         # if only the follow gates are changed we don't have to worry about
         # finding the FSE within the lead gates because it is already set
         left_gate = self.peak_bin[3, 1, :, :]
         right_gate = self.peak_bin[4, 1, :, :]
 
-        # determine pulse width, this is used to bracket peaks
+        # determine the width of the gate in which to search for the vpp
+        # PULSE_LENGTH is the number of half pulses that are to be used in the
+        # search
         pulse_width = int(self.PULSE_LENGTH * self.n_half_pulse)
 
         # IMPORTANT...
@@ -611,13 +626,13 @@ class THzData(object):
                     if min_pos == min_pos2:
                         pass
                     else:
-                        left_pulse = min_pos - pulse_width
-                        right_pulse = min_pos + pulse_width
+                        left_pulse = min_pos2 - pulse_width
+                        right_pulse = min_pos2 + pulse_width
                         if left_pulse < left_gate[i, j]:
                             left_pulse = left_gate[i, j]
                         if right_pulse > right_gate[i, j]:
                             right_pulse = right_gate[i, j]
-                        max_pos2 = self.waveform[i, j, left_pulse:right_pulse].argmin()
+                        max_pos2 = self.waveform[i, j, left_pulse:right_pulse].argmax()
                         max_pos2 += left_pulse
                         vpp2 = self.waveform[i, j, max_pos2] - self.waveform[i, j, min_pos2]
 
