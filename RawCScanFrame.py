@@ -48,10 +48,6 @@ class RawCScanFrame(ParentFrame):
         # C-Scan that is currently in view
         self.rescale_colorbar_menu = None
 
-        # the menu item that calculates the signal to noise ratio from the part
-        # of the C-Scan that is currently in view
-        self.calculate_c_scan_sn_ratio_button = None
-
         # menu item that allows the user to change the colorbar orientation
         self.colorbar_dir_menu_button = None
 
@@ -71,30 +67,12 @@ class RawCScanFrame(ParentFrame):
         self.rescale_colorbar_menu = wx.MenuItem(self.options_menu, wx.ID_ANY, 'Rescale Colorbar',
                                                  'Rescale colorbar with current image')
 
-        description = 'Calculate C-Scan S/N ratio based on current view'
-        title = 'Calculate C-Scan S/N Ratio'
-        self.calculate_c_scan_sn_ratio_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
-                                                            description)
-
-        description = 'Calculate A-Scan S/N ratio based on current C-Scan View'
-        title = 'Calculate A-Scan S/N Ratio'
-        self.calculate_sn_ratio_menu_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
-                                                          description)
-
-        title = 'Calculate A-Scan S/N Ratio from Defect only'
-        description = 'Calculate S/N ratio from defect waveforms only'
-        self.calculate_sn_ratio_menu_button2 = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
-                                                           description)
-
         title = 'Change Colorbar Orientation'
         description = 'Changes the colorbar orientation between horizontal and vertical'
         self.colorbar_dir_menu_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
                                                     description)
 
         self.options_menu.Append(self.rescale_colorbar_menu)
-        self.options_menu.Append(self.calculate_c_scan_sn_ratio_button)
-        self.options_menu.Append(self.calculate_sn_ratio_menu_button)
-        self.options_menu.Append(self.calculate_sn_ratio_menu_button2)
         self.options_menu.Append(self.colorbar_dir_menu_button)
 
         self.menu_bar.Append(self.options_menu, '&Options')
@@ -150,12 +128,6 @@ class RawCScanFrame(ParentFrame):
 
         # wx events
         self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
-        self.Bind(wx.EVT_MENU, self.on_cscan_signal_noise_click,
-                  self.calculate_c_scan_sn_ratio_button)
-        self.Bind(wx.EVT_MENU, self.on_ascan_signal_noise_click,
-                  self.calculate_sn_ratio_menu_button)
-        self.Bind(wx.EVT_MENU, self.on_ascan_signal_noise_click_defect_only,
-                  self.calculate_sn_ratio_menu_button2)
         self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
 
     def motion_handler(self, event):
@@ -269,117 +241,6 @@ class RawCScanFrame(ParentFrame):
         self.colorbar.update_normal(self.image)
 
         self.figure_canvas.draw()  # redraw image
-
-    def on_cscan_signal_noise_click(self, event):
-        """
-        Calculate the signal to noise ratio based on the area that is currently
-        in view in the C-Scan. This method is based only on the pixel values
-        that are in the C-Scan image.
-
-        Calculate the signal to noise ratio defined as ...
-            (Peak Defect - Avg. Noise) / (Peak Noise - Avg. Noise)
-        """
-
-        from base_util.base_util import clear_small_defects
-
-        area, thresh, bound_coords = self._sn_define_area_helper()
-
-        binary_image = np.zeros(area.shape)
-        binary_image[np.where(area > thresh)] = 1
-
-        binary_image = clear_small_defects(binary_image, 4)
-
-        # create a new figure that shows the the thresholded image
-        plt.figure('C-Scan After Threshold')
-        plt.imshow(binary_image, cmap='gray', extent=self.axis.axis())
-        plt.xlabel('X Scan Location (mm)')
-        plt.ylabel('Y Scan Location (mm)')
-        plt.grid()
-        plt.show()
-
-        peak_defect = area[np.where(binary_image == 1)].max()
-        avg_noise = area[np.where(binary_image == 0)].mean()
-        peak_noise = area[np.where(binary_image == 0)].max()
-
-        sn_ratio = (peak_defect - avg_noise) / (peak_noise - avg_noise)
-
-        # open a message dialog that displays the signal to noise ratio
-        # calculation
-        mssg_string = ('Signal to Noise Ratio = %0.4f\n'
-                       'Max Peak = %0.4f\n'
-                       'Max Noise = %0.4f\n'
-                       'Avg. Noise = %0.4f'
-                       % (sn_ratio, peak_defect, peak_noise, avg_noise))
-        title_string = 'Signal to Noise Ratio'
-        dlg = wx.MessageDialog(self, mssg_string, title_string, wx.OK |
-                               wx.ICON_INFORMATION)
-        dlg.ShowModal()
-
-    def on_ascan_signal_noise_click(self, event):
-        """
-        Calculates the signal to noise ratio based on the signal and noise in
-        the A-Scan between the follow gates. This method uses the defect and
-        the surrounding waveforms to calculate the signal to noise ratio.
-        """
-        pass
-
-    def on_ascan_signal_noise_click_defect_only(self, event):
-        """
-        Calculates the signal to noise ratio based on the signal and noise in
-        the A-Scan between the follow gates. This method uses the waveforms
-        from the defect only to calculate the signal to noise ratio.
-        """
-        pass
-
-    # private method
-    def _sn_define_area_helper(self):
-        """
-        Method to determine the area in the image that was visible when a
-        signal to noise calculation button was hit. The keeps common code in
-        one place that will be called for any signal to noise ratio calculation
-        :return area: The area that is inside of the x & y limits in the C-Scan
-        :return thresh: The threshold for the area to create a binary image.
-        :return coord_bounds: A tuple that has the i & j indices that bound the
-            area of interest. Returned as (i0, i1, j0, j1).
-        """
-        import skimage.filters
-
-        # using the get_bound method instead of get_lim method returns the
-        # lower and upper bounds of the image in increasing order regardless of
-        # which is left or right; or top or bottom. This will allow us to
-        # access the data x & y array without rearranging the boundary values
-        x_bounds = np.array(self.axis.get_xbound())
-        y_bounds = np.array(self.axis.get_ybound())
-
-        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
-        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
-
-        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
-        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
-
-        # we want to area to be inclusive of the end points so add +1 to them
-        area = self.data.c_scan[i0:i1+1, j0:j1+1]
-
-        # get the y bounds again with get_ylim() so they are in bottom-top
-        # order to compare to c_scan_extent
-        y_bounds = np.array(self.axis.get_ylim())
-
-        # the threshold that we want to use depends on whether or not the full
-        # sample is in view. Yen's Threshold seems to do better on the full
-        # sample, while Otsu's Threshold does better on a smaller area with one
-        # or two defects visible
-        # if np.array_equal(bounds, self.data.c_scan_extent):
-        #     thresh = skimage.filters.threshold_yen(area)
-        # else:
-        #     thresh = skimage.filters.threshold_otsu(area)
-
-        thresh = skimage.filters.threshold_triangle(area)
-        skimage.filters.try_all_threshold(area)
-
-        # put the coords in a tuple to return them
-        coord_bounds = (i0, i1, j0, j1)
-
-        return area, thresh, coord_bounds
 
     def change_colorbar_dir(self, event):
         """
