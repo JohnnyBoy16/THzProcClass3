@@ -395,17 +395,22 @@ class THzData(object):
 
         self.freq_waveform = np.fft.rfft(gated_waveform, axis=2)
 
-    def resize(self, x0, x1, y0, y1, return_indices=False):
+    def resize(self, indices, indexing='xy', return_indices=False):
         """
         Resizes the data in the bounds between x0, x1, y0, and y1. Should be
         used to remove the edges from the data if it was over scanned. This
         method creates attributes waveform_small, c_scan_small, and if time of
         flight c-scan has already been calculated it also creates
         tof_c_scan_small.
-        :param x0: The smallest x value in the new image
-        :param x1: The largest x value in the new image
-        :param y0: The smallest y value in the new image
-        :param y1: The largest y value in the new image
+        :param indices: Expected to be an iterable containing the values from
+            which to bound the data. If indexing=('xy') (Default), the iterable
+            is expected to contain (x_min, x_max, y_min, y_max). If
+            indexing='ij', it is expected to contain
+            (i_min, i_max, j_min, j_max).
+
+            Note that normally in the C-Scan that is output by THzProc the -y
+            values are on top of the C-Scan image.
+
         :param return_indecices: If passed as True will return the indices that
             were used to generate the small C-Scan as (i0, i1, j0, j1). Where
             i0 is the top most index. i1 is bottom most index. j0 is the left
@@ -414,13 +419,32 @@ class THzData(object):
 
         self.has_been_resized = True
 
-        j0 = np.argmin(np.abs(self.x - x0))
-        j1 = np.argmin(np.abs(self.x - x1))
+        if indexing == 'xy':
+            # if the 'xy' indexing is used, need to convert to (i, j). Do this
+            # by getting the indices of the closest value in the x and y array
+            # to ones that the user passed through
+            x0 = indices[0]
+            x1 = indices[1]
+            y0 = indices[2]
+            y1 = indices[3]
+
+            j0 = np.argmin(np.abs(self.x - x0))
+            j1 = np.argmin(np.abs(self.x - x1))
+            i0 = np.argmin(np.abs(self.y - y0))
+            i1 = np.argmin(np.abs(self.y - y1))
+
+        elif indexing == 'ij':
+            i0 = indices[0]
+            i1 = indices[1]
+            j0 = indices[2]
+            j1 = indices[3]
+
+        else:
+            raise ValueError('Parameter indexing must be either "xy" or "ij"')
+
         self.x_small = self.x[j0:j1]
         self.x_step_small = len(self.x_small)
 
-        i0 = np.argmin(np.abs(self.y - y0))
-        i1 = np.argmin(np.abs(self.y - y1))
         self.y_small = self.y[i0:i1]
         self.y_step_small = len(self.y_small)
 
