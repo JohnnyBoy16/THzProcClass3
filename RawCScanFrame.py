@@ -167,8 +167,18 @@ class RawCScanFrame(ParentFrame):
         self.i_index = int((y_data - self.data.y_min) / self.data.dy)
         self.j_index = int((x_data - self.data.x_min) / self.data.dx)
 
-        self.holder.a_scan_frame.plot(self.i_index, self.j_index)
-        self.holder.b_scan_frame.plot(self.i_index, self.j_index)
+        # have the try catch blocks here so if the use is not using the A-Scan
+        # or B-Scan frame the code will still run. An AttributeError will be
+        # raised if holder does not have an a_scan_frame or b_scan_frame
+        try:
+            self.holder.a_scan_frame.plot(self.i_index, self.j_index)
+        except AttributeError:
+            pass
+
+        try:
+            self.holder.b_scan_frame.plot(self.i_index, self.j_index)
+        except AttributeError:
+            pass
 
     def flash_b_scan_line(self):
         """
