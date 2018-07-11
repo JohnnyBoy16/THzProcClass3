@@ -235,8 +235,10 @@ if __name__ == '__main__':
     with wx.FileDialog(self, 'Open Reference', wildcard='txt files (*.txt)|*.txt',
                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dlg:
 
+        dlg.SetDirectory('C:\\Work\\Refs')
+
         if dlg.ShowModal() == wx.ID_CANCEL:  # user clicks cancel
-            sys.exit(0)
+            sys.exit(0)  # terminate program
 
         full_path = dlg.GetPath()
 

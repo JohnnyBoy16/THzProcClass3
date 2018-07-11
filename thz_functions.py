@@ -1,18 +1,20 @@
 """
-Contains functions that are defined in Dr. Thomas Chiou's THzProc code. These functions were put
-into this file so that they can be called by another program.
+Contains functions that are defined in Dr. Thomas Chiou's THzProc code. These
+functions were put into this file so that they can be called by another program.
 
 Function Descriptions:
   ReMap -
-      The data that is output by the TeraView Software does not have the data points aligned
-      correctly. Remap takes the waveform that is output by the TeraView software and realigns the
-      data points to produce a cleaner image.
+      The data that is output by the TeraView Software does not have the data
+      points aligned correctly. Remap takes the waveform that is output by the
+      TeraView software and realigns the data points to produce a cleaner image.
   AmpCor300 -
-      The waveforms that are output by the TeraView Software have excessive amplification on each
-      end of the waveform if the time window is large (around 300ps). AmpCor300 fits an
-      exponential on both sides of the waveform to remove the excess amplification.
+      The waveforms that are output by the TeraView Software have excessive
+      amplification on each end of the waveform if the time window is large
+      (around 300ps). AmpCor300 fits an exponential on both sides of the
+      waveform to remove the excess amplification.
   FindPeaks -
-      Finds peaks in each waveform within the region that is specified by BinRange
+      Finds peaks in each waveform within the region that is specified by
+      BinRange
 """
 import pdb
 import numpy as np
@@ -499,7 +501,6 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
 
     # last update: 29DEC2015
 
-
     npeak = len(BinRange)
     PeakBin = np.zeros((5, npeak, Ystep, Xstep), dtype=np.int16)
 
@@ -518,18 +519,24 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                     np.argmax(waveform[i, j, BinRange[0][0]:BinRange[0][1] + 1]) + BinRange[0][0]
                 # check more carefully to see if FSE is smaller (due to defocusing, etc) than the largest peak in the gate
                 if PeakBin[0, 0, i, j] - nHalfPulse - BinRange[0][0] > 0:  # in case PeakBin[0,0,i,j] too early
-                    itmp = (np.where(
-                        waveform[i, j, BinRange[0][0]:PeakBin[0, 0, i, j] - nHalfPulse] > fthres *
-                        waveform[i, j, PeakBin[0, 0, i, j]]))
+                    itmp = (np.where(waveform[i, j, BinRange[0][0]:PeakBin[0, 0, i, j] - nHalfPulse] > fthres * waveform[i, j, PeakBin[0, 0, i, j]]))
                     if len(itmp[0]) != 0:  # see if any peak above the threshold before maxfloc[i,j]
                         itmp2 = itmp[0][0] + BinRange[0][0]  # np.where returns tuple in itmp
                         itmp2 = np.argmax(waveform[i, j, itmp2:itmp2 + nHalfPulse]) + itmp2
                         PeakBin[0, 0, i, j] = itmp2
                 # find the neg. peak within pulse width=2*nHalfPulse
                 L = PeakBin[0, 0, i, j] - nHalfPulse
-                L = (L if L > 0 else 0)
+                if L < BinRange[0][0]:
+                    L = BinRange[0][0]
+                elif L < 0:
+                    L = 0
+                # L = (L if L > 0 else 0)
                 R = PeakBin[0, 0, i, j] + nHalfPulse
-                R = (R if R <= wavlen else wavlen)
+                if R > BinRange[0][1]:
+                    R = BinRange[0][1]
+                elif R >= wavlen:
+                    R = wavlen - 1  # account for python's 0 indexing
+                # R = (R if R <= wavlen else wavlen)
                 PeakBin[1, 0, i, j] = np.argmin(waveform[i, j, L:R]) + L
                 PeakBin[2, 0, i, j] = (PeakBin[0, 0, i, j] + PeakBin[1, 0, i, j]) / 2
                 PeakBin[3, 0, i, j] = BinRange[0][0]
@@ -561,6 +568,7 @@ def FindPeaks(waveform, Xstep, Ystep, wavlen, nHalfPulse, fthres, BinRange, Puls
                     if PulseLen < 0.:  # 29DEC2015: enforce search of neg. peak within original gate
                         PeakBin[0, k, i, j] = np.argmax(waveform[i, j, L:R]) + L  # max location
                         PeakBin[1, k, i, j] = np.argmin(waveform[i, j, L:R]) + L  # min location
+                        # below is halfway between min and max location (not zero crossing)
                         PeakBin[2, k, i, j] = (PeakBin[0, k, i, j] + PeakBin[1, k, i, j]) // 2
 
                     # otherwise, look for the max Vpp within a certain space from either the max,

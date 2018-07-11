@@ -6,6 +6,7 @@ import sys
 import pdb
 
 import numpy as np
+import skimage.filters
 
 from THzProc.thz_functions import AmpCor300, FindPeaks, ReMap
 
@@ -23,8 +24,8 @@ class THzData(object):
     data = THzData(filename, basedir, etc.)
     """
 
-    def __init__(self, filename, basedir=None, gate=None, follow_gate_on=True, 
-                 signal_type=1, center=False, print_on=True):
+    def __init__(self, filename, basedir=None, gate=None, follow_gate_on=True,
+                 signal_type=1, center=False, print_on=True, **kwargs):
         """
         Constructor method
         :param filename: Either the filename or full path to the tvl file. If
@@ -74,11 +75,11 @@ class THzData(object):
         # B Scan direction is usually horizontal by default
         self.b_scan_dir = 'horizontal'
 
-        # whether or not to correct for the excessive amplification on the 
+        # whether or not to correct for the excessive amplification on the
         # edges of the 300 ps waveforms
         self.amp_correction300_on = True
 
-        # initialize all of the variables that are wanted from the header, 
+        # initialize all of the variables that are wanted from the header,
         # these are calculated in the method header_info()
         self.time_length = None  # the time length of the scan in ps
         self.x_res = None  # the attempted spacing between x points in the scan in mm
@@ -94,11 +95,18 @@ class THzData(object):
         # the first axis, usually x, but can be turntable if rotational scan in performed.
         self.axis = None
 
+        # the frequency domain representation of the data between either the
+        # follow gates, if follow_gate_on is True or the front gates
+        self.freq_waveform = np.ndarray
+
         self.dt = None  # the spacing between time values
         self.time = None  # array of time values that is used for plotting
-        self.freq = None  # array of frequency values that is used for ploting
+        self.freq = None  # array of frequency values that is used for plotting
         self.df = None  # spacing between frequency values
-        self.n_half_pulse = None  # the number of half pulses in the scan
+
+        # the number of data points in a half pulse
+        self.n_half_pulse = int
+
         self.true_x_res = None  # the spacing between x points after Remap is called
         self.true_y_res = None  # the spacing between y points after Remap is called
         self.dx = None  # the average difference between x data points
@@ -106,10 +114,8 @@ class THzData(object):
         self.b_scan = None  # the B-Scan values
         self.tof_c_scan = None  # the time of flight of the front surface
 
-        # the largest frequency that you would like the frequency plots to go up to
-        self.work_freq = 3.0
-
-        # flags peaks (the FSE always and peaks in follow gate if follow gate is on)
+        # if True there will be little crosses displayed on the peak locations
+        # in the lead gates and the follow
         self.flag_peak_on = True
 
         # incoming angle of the THz Beam (17.5 degrees) converted to radians
@@ -125,7 +131,7 @@ class THzData(object):
         # 1 for the positive peak, 2 for the negative peak, prefer 1
         self.PICK_PEAK = 1
 
-        # provides algorithm for removing baseline trend in near-field imaging. 
+        # provides algorithm for removing baseline trend in near-field imaging.
         # leave 0 for now
         self.TREND_OFF = 0
 
@@ -133,14 +139,28 @@ class THzData(object):
         self.FSE_TOLERANCE = -0.17
 
         # parameters to pass to the AmpCor300 function
-        self.AMP_CORRECTION_300_PAR = [0., 35., 5.0, 1., 240., 300., 1., 4.5, 4.]
+        self.AMP_CORRECTION_300_PAR = [0., 35., 5.0, 1., 240., 300., 1., 4.5,
+                                       4.]
 
         self.X_CORRECTION_TOLERANCE = 0.1
-        self.PULSE_LENGTH = 3  # 3 is the original value from Thomas's THzProc
-        # self.PULSE_LENGTH = -1  # set to be negative so negative peak is always within follow gate
 
-        # difference that a point is allowed to deviate (as a ratio with respect to resolution)
-        # from its desired coordinate
+        # half pulse width for bracketing the front surface echo this value was
+        # originally 2 in Thomas's THzProc
+        self.HALF_PULSE = 2
+
+        # the number of half pulses within which to search for the peak to
+        # peak value within the follow gate. For example if the maximum peak
+        # in the follow gates is found, then the minimum peak that defines the
+        # Vpp with can only a maximum of PULSE_LENGTH * HALF_PULSE ps away. The
+        # length of the half pulse is defined by HALF_PULSE
+        if 'pulse_length' in kwargs:
+            self.PULSE_LENGTH = kwargs['pulse_length']
+        else:
+            # 3 is the original value from Thomas's THzProc
+            self.PULSE_LENGTH = 3
+
+        # difference that a point is allowed to deviate (as a ratio with
+        # respect to resolution) from its desired coordinate
         self.X_DIFFERENCE_TOLERANCE = 0.4
         self.Y_DIFFERENCE_TOLERANCE = 0.3
 
@@ -148,20 +168,15 @@ class THzData(object):
         # this is nlim from base THzProc
         self.N_LIMIT = 0.8
 
-        # half pulse width for bracketing the follower signal (usually the front surface echo)
-        self.HALF_PULSE = 2  # don't change unless you have a good reason to
-
         # threshold for lead gate signal
         self.FSE_THRESHOLD = 0.5
 
-        # tolerance ratio for number of actual scan points in a X line compared to how many are
-        # supposed to be in that line
+        # tolerance ratio for number of actual scan points in a X line compared
+        # to how many are supposed to be in that line
         self.X_RATIO_LIMIT = 0.8
 
-        # the height of the figure in inches
-        self.FIGURE_HEIGHT = 8
-
-        # a small value that is used to see if floating points are close together.
+        # a small value that is used to see if floating points are close
+        # together.
         self.TINY = 1e-4
 
         # END OF CONSTANTS -------------------------------------------------------------------------
@@ -209,8 +224,10 @@ class THzData(object):
         # index 4 = right gate index
         self.find_peaks()
 
-        self.c_scan_extent = (self.x_min, self.x_max, self.y_max, self.y_min)
-        self.b_scan_extent = (self.x_min, self.x_max, 0, self.time_length)
+        # do not use x_min and y_min for extent because they do not represent
+        # the true x and y values after remap has been called
+        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
+        self.b_scan_extent = (self.x[0], self.x[-1], 0, self.time_length)
 
         # Generate the C-Scan
         self.make_c_scan(self.signal_type)
@@ -221,10 +238,10 @@ class THzData(object):
         At the moment this just does peak to peak voltage response
         :param: signal_type - determines how the C-Scan is calculated
                     choices:
-                        0: (default) Use Peak to Peak voltage with the front 
+                        0: (default) Use Peak to Peak voltage with the front
                            gates regardless of whether follow gate is on or not.
                         1: Use Peak to Peak voltage with the follow gates if on.
-                           If follow gate is not on then use peak to peak 
+                           If follow gate is not on then use peak to peak
                            voltage across entire waveform
                         2: avg mag (mag = abs amp)
                         3: median mag
@@ -339,7 +356,7 @@ class THzData(object):
 
     def make_time_of_flight_c_scan(self):
         """
-        Generates a time of flight C-Scan that shows the time of flight in 
+        Generates a time of flight C-Scan that shows the time of flight in
         picoseconds of each pixel on the front surface.
         """
         tof_index = self.waveform.argmax(axis=2)
@@ -349,32 +366,85 @@ class THzData(object):
             for j in range(self.x_step):
                 self.tof_c_scan[i, j] = self.time[tof_index[i, j]]
 
-    def resize(self, x0, x1, y0, y1, return_indices=False):
+    def take_fft(self, gate=None):
         """
-        Resizes the data in the bounds between x0, x1, y0, and y1. Should be 
-        used to remove the edges from the data if it was over scanned. This 
-        method creates attributes waveform_small, c_scan_small, and if time of 
-        flight c-scan has already been calculated it also creates 
+        Generates a frequency representation of the data that is between the
+        specified follow gates. Peak Bin is used to follow the FSE.
+        """
+        pass
+        # set up gated waveform so the area of interest from waveform (defined
+        # by the gates in peak_bin) still has the proper number of data points
+        # which is (wave_length//2 + 1) eg. 4096//2 + 1 = 2049
+        gated_waveform = np.zeros((self.y_step, self.x_step,
+                                   self.wave_length//2+1), dtype=complex)
+
+        if self.follow_gate_on:
+            idx = 1
+        else:
+            idx = 0
+
+        # extract the part of the waveform that we are interested in and put it
+        # in gated_waveform so it is properly zero-padded. This also allows us
+        # to take the FFT in one shot.
+        for i in range(self.y_step):
+            for j in range(self.x_step):
+                left_gate = self.peak_bin[3, idx, i, j]
+                right_gate = self.peak_bin[4, idx, i, j]
+                gated_waveform[i, j, left_gate:right_gate] = \
+                    self.waveform[i, j, left_gate:right_gate]
+
+        self.freq_waveform = np.fft.rfft(gated_waveform, axis=2)
+
+    def resize(self, indices, indexing='xy', return_indices=False):
+        """
+        Resizes the data in the bounds between x0, x1, y0, and y1. Should be
+        used to remove the edges from the data if it was over scanned. This
+        method creates attributes waveform_small, c_scan_small, and if time of
+        flight c-scan has already been calculated it also creates
         tof_c_scan_small.
-        :param x0: The smallest x value in the new image
-        :param x1: The largest x value in the new image
-        :param y0: The smallest y value in the new image
-        :param y1: The largest y value in the new image
-        :param return_indecices: If passed as True will return the indices that 
-            were used to generate the small C-Scan as (i0, i1, j0, j1). Where 
-            i0 is the top most index. i1 is bottom most index. j0 is the left 
+        :param indices: Expected to be an iterable containing the values from
+            which to bound the data. If indexing=('xy') (Default), the iterable
+            is expected to contain (x_min, x_max, y_min, y_max). If
+            indexing='ij', it is expected to contain
+            (i_min, i_max, j_min, j_max).
+
+            Note that normally in the C-Scan that is output by THzProc the -y
+            values are on top of the C-Scan image.
+
+        :param return_indecices: If passed as True will return the indices that
+            were used to generate the small C-Scan as (i0, i1, j0, j1). Where
+            i0 is the top most index. i1 is bottom most index. j0 is the left
             most index, and j1 is the right most.
         """
 
         self.has_been_resized = True
 
-        j0 = np.argmin(np.abs(self.x - x0))
-        j1 = np.argmin(np.abs(self.x - x1))
+        if indexing == 'xy':
+            # if the 'xy' indexing is used, need to convert to (i, j). Do this
+            # by getting the indices of the closest value in the x and y array
+            # to ones that the user passed through
+            x0 = indices[0]
+            x1 = indices[1]
+            y0 = indices[2]
+            y1 = indices[3]
+
+            j0 = np.argmin(np.abs(self.x - x0))
+            j1 = np.argmin(np.abs(self.x - x1))
+            i0 = np.argmin(np.abs(self.y - y0))
+            i1 = np.argmin(np.abs(self.y - y1))
+
+        elif indexing == 'ij':
+            i0 = indices[0]
+            i1 = indices[1]
+            j0 = indices[2]
+            j1 = indices[3]
+
+        else:
+            raise ValueError('Parameter indexing must be either "xy" or "ij"')
+
         self.x_small = self.x[j0:j1]
         self.x_step_small = len(self.x_small)
 
-        i0 = np.argmin(np.abs(self.y - y0))
-        i1 = np.argmin(np.abs(self.y - y1))
         self.y_small = self.y[i0:i1]
         self.y_step_small = len(self.y_small)
 
@@ -393,7 +463,7 @@ class THzData(object):
 
     def center_coordinates(self):
         """
-        Centers the x and y coordinates such that (0, 0) is in the center of 
+        Centers the x and y coordinates such that (0, 0) is in the center of
         the image.
         """
         self.x -= ((self.x[0] + self.x[-1]) / 2)
@@ -410,7 +480,7 @@ class THzData(object):
 
     def adjust_coordinates(self, i, j):
         """
-        Adjusts the coordinate system so that the point at index (i, j) is at 
+        Adjusts the coordinate system so that the point at index (i, j) is at
         (0, 0).
         :param i: The index of the new center row
         :param j: The index of the new center column
@@ -429,7 +499,7 @@ class THzData(object):
 
     def make_b_scan(self, yid, xid):
         """
-        Generates the B-Scan based on the last cursor location clicked and 
+        Generates the B-Scan based on the last cursor location clicked and
         whether b_scan_dir is horizontal or vertical
         :param yid: the row from which to generate B-Scan
         :param xid: the column clicked from which to generate B-Scan
@@ -448,9 +518,9 @@ class THzData(object):
 
     def set_follow_gate(self, given_boolean):
         """
-        Sets the follow gate to be either on or off. If follow gate is changed, 
+        Sets the follow gate to be either on or off. If follow gate is changed,
         code will update bin_range and peak_bin.
-        :param given_boolean: True: follow gate is on. False: follow gate is 
+        :param given_boolean: True: follow gate is on. False: follow gate is
             off.
         """
         # if user tries to set it to the value that it already is, do nothing
@@ -473,10 +543,10 @@ class THzData(object):
 
     def change_gate(self, incoming_gate):
         """
-        Change the gate locations by providing an a new gate. Then updates 
-        bin_range and peak_bin accordingly. This method does NOT create a new 
+        Change the gate locations by providing an a new gate. Then updates
+        bin_range and peak_bin accordingly. This method does NOT create a new
         C-Scan image based on the new gate.
-        :param incoming_gate: The value of gate that is to be changed to, must 
+        :param incoming_gate: The value of gate that is to be changed to, must
             be a 2x2 list or numpy array
         """
         import time
@@ -496,8 +566,8 @@ class THzData(object):
             self.gate[1] = incoming_gate[1]
             self.bin_range[1] = incoming_gate[1]
 
-            # adjust the left and right follow gates of the 2nd layer based on front surface peaks
-            # and the incoming gate
+            # adjust the left and right follow gates of the 2nd layer based on
+            # front surface peaks and the incoming gate
             left_gate = self.peak_bin[0, 0, :, :] + incoming_gate[1][0]
             right_gate = self.peak_bin[0, 0, :, :] + incoming_gate[1][1]
             left_gate[np.where(left_gate < 0)] = 0
@@ -512,8 +582,9 @@ class THzData(object):
             self.bin_range = copy.deepcopy(incoming_gate)
             self.find_peaks()
 
-        # Update gate after everything else in case an error is thrown in find_peaks().
-        # If an error is thrown, gate will not update. This is what we want
+        # Update gate after everything else in case an error is thrown in
+        # find_peaks(). If an error is thrown, gate will not update. This is
+        # what we want
         self.gate = copy.deepcopy(incoming_gate)
 
         t1 = time.time()
@@ -524,17 +595,28 @@ class THzData(object):
         Faster version of find peaks that is called if only the follow gates
         are changed.
         """
+        print('In Fast Find Peaks!')
+        # TODO: in the future need to add functions for finding the front peak
+        #       and the peaks in the follow gate, as separate functions.
+
+        # if PULSE_LENGTH < 0, the maximum and minimum peaks will be found with
+        # the follow gate regardless of how far apart they are from each other.
+        # If PULSE_LENGTH > 0, the maximum and minimum peaks will only be that
+        # far apart from each other and will also be inside of the follow gate
+
         # if only the follow gates are changed we don't have to worry about
         # finding the FSE within the lead gates because it is already set
         left_gate = self.peak_bin[3, 1, :, :]
         right_gate = self.peak_bin[4, 1, :, :]
 
-        # determine pulse width, this is used to bracket peaks
+        # determine the width of the gate in which to search for the vpp
+        # PULSE_LENGTH is the number of half pulses that are to be used in the
+        # search
         pulse_width = int(self.PULSE_LENGTH * self.n_half_pulse)
 
         # IMPORTANT...
-        # need to add left_gate or left pulse to all positions found. Numpy 
-        # returns the index for the position found within waveform that it is 
+        # need to add left_gate or left pulse to all positions found. Numpy
+        # returns the index for the position found within waveform that it is
         # passed
 
         for i in range(self.y_step):
@@ -548,7 +630,7 @@ class THzData(object):
                     left_pulse = max_pos - pulse_width
                     right_pulse = max_pos + pulse_width
                     # make sure pulse gates are inside of follow gates
-                    if left_pulse < left_gate[i, j]: 
+                    if left_pulse < left_gate[i, j]:
                         left_pulse = left_gate[i, j]
                     if right_pulse > right_gate[i, j]:
                         right_pulse = right_gate[i, j]
@@ -568,13 +650,13 @@ class THzData(object):
                     if min_pos == min_pos2:
                         pass
                     else:
-                        left_pulse = min_pos - pulse_width
-                        right_pulse = min_pos + pulse_width
+                        left_pulse = min_pos2 - pulse_width
+                        right_pulse = min_pos2 + pulse_width
                         if left_pulse < left_gate[i, j]:
                             left_pulse = left_gate[i, j]
                         if right_pulse > right_gate[i, j]:
                             right_pulse = right_gate[i, j]
-                        max_pos2 = self.waveform[i, j, left_pulse:right_pulse].argmin()
+                        max_pos2 = self.waveform[i, j, left_pulse:right_pulse].argmax()
                         max_pos2 += left_pulse
                         vpp2 = self.waveform[i, j, max_pos2] - self.waveform[i, j, min_pos2]
 
@@ -586,11 +668,40 @@ class THzData(object):
                 self.peak_bin[1, 1, i, j] = min_pos
                 self.peak_bin[2, 1, i, j] = (max_pos + min_pos) // 2
 
+    def center_image(self):
+        """
+        Will center the x & y axis arrays over the middle of the sample such
+        that the center of the sample is coordinate (0, 0). This method assumes
+        that the sample is rectangular
+        """
+
+        binary = np.zeros(self.c_scan.shape)
+
+        # otsu threshold is generally good at differentiating between the
+        # sample as whole and the background
+        threshold = skimage.filters.threshold_otsu(self.c_scan)
+
+        # assume that the peak to peak value of the waveforms on the sample
+        # will be larger than on the overscanned areas, so let values larger
+        # than threshold be 1
+        binary[np.where(self.c_scan > threshold)] = 1
+
+        sample = np.where(binary)
+        first_i = sample[0].min()
+        last_i = sample[0].max()
+        first_j = sample[1].min()
+        last_j = sample[1].max()
+
+        center_i = (last_i + first_i) // 2
+        center_j = (last_j + first_j) // 2
+
+        self.adjust_coordinates(center_i, center_j)
+
     def find_peaks(self):
         """
-        Put FindPeaks in method so it can be called in another program. 
-        Initializes peak_bin, which contains information about the location of 
-        the front surface echo, and if follow gate is on, the location of the 
+        Put FindPeaks in method so it can be called in another program.
+        Initializes peak_bin, which contains information about the location of
+        the front surface echo, and if follow gate is on, the location of the
         2nd peak.
         """
         self.peak_bin = FindPeaks(self.waveform, self.x_step, self.y_step, self.wave_length,
@@ -599,7 +710,7 @@ class THzData(object):
 
     def printer(self):
         """
-        Prints information about the scan to the console when a THz data class 
+        Prints information about the scan to the console when a THz data class
         in instantiated
         """
         print()
@@ -616,7 +727,7 @@ class THzData(object):
 
     def header_info(self, header):
         """
-        Retrieves information about the scan from the header file that is 
+        Retrieves information about the scan from the header file that is
         created by the DataFile class.
         :param header: the header of the data file class
         """
@@ -653,7 +764,7 @@ class THzData(object):
 
     def delta_calculator(self):
         """
-        Calculates dt, df, n_half_pulse, and the time and frequency array that 
+        Calculates dt, df, n_half_pulse, and the time and frequency array that
         are used for plotting.
         """
         # Note that len(freq) is wave_length/2 + 1. This is so it can be used with
@@ -748,8 +859,13 @@ class RefData(object):
             if basedir is None:
                 basedir, filename = os.path.split(filename)
 
+            # if user includes a directory in the filename string attempt to
+            # root it out
+            if filename.find('\\') != -1:
+                filename = os.path.split(filename)[1]
+
             # get the integer value of the waveform length, information on time
-            # length of the reference signal usually starts with 'ps' or a 
+            # length of the reference signal usually starts with 'ps' or a
             # space.
             max_pos = min(filename.index('p'), filename.index(' '))
             max_time = self.time[0] + int(filename[:max_pos])

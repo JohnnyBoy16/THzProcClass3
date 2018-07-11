@@ -8,8 +8,10 @@ from THzProc.ParentFrame import ParentFrame
 
 class BScanFrame(ParentFrame):
     """
-    Frame to display the B-Scan at the last location clicked on in the gray scale C-Scan
+    Frame to display the B-Scan at the last location clicked on in the gray
+    scale C-Scan
     """
+
     def __init__(self, holder, data, title=None):
         """
         Constructor method
@@ -129,10 +131,12 @@ class BScanFrame(ParentFrame):
         # plot the new B-Scan
         self.plot(self.i_index, self.j_index)
 
+        self.holder.raw_c_scan_frame.flash_b_scan_line()
+
     def motion_handler(self, event):
         """
-        Prints the current (x,y) values that the mouse is over to the status bar along with the
-        pixel value at that (x,y) location.
+        Prints the current (x,y) values that the mouse is over to the status
+        bar along with the pixel value at that (x,y) location.
         """
         # if now point in the C-Scan has been clicked on yet there is no
         # information to display on the status bar
