@@ -345,7 +345,7 @@ class RawCScanFrame(ParentFrame):
         # need to specify which axis the colorbar will be drawn on. Otherwise
         # it will attach itself to the most recent figure object, which may not
         # be the figure from this frame
-        self.colorbar = plt.colorbar(self.image, ax=self.axis, 
+        self.colorbar = plt.colorbar(self.image, ax=self.axis,
                                      orientation=self.colorbar_dir)
 
         self.figure_canvas.draw()
