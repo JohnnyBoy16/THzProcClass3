@@ -492,7 +492,7 @@ class THzData(object):
         self.x_min = self.x[0]
         self.x_max = self.x[-1]
         self.y_min = self.y[0]
-        self.y_min = self.y[-1]
+        self.y_max = self.y[-1]
 
         # reset extent
         self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
