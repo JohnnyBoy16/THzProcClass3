@@ -223,6 +223,7 @@ if __name__ == '__main__':
     # reference file that they wish to open
 
     import sys
+    import os
 
     import wx
 
@@ -241,6 +242,10 @@ if __name__ == '__main__':
             sys.exit(0)  # terminate program
 
         full_path = dlg.GetPath()
+
+    basedir, filename = os.path.split(full_path)
+    print(basedir)
+    print(filename)
 
     frame = ReferenceFrame(full_path)
 
