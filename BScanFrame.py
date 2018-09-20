@@ -1,6 +1,7 @@
 import pdb
 
 import wx
+import numpy as np
 import matplotlib.pyplot as plt
 
 from THzProc.ParentFrame import ParentFrame
@@ -84,8 +85,8 @@ class BScanFrame(ParentFrame):
         :param i: The column index to look at
         :param j: The row index to look at
         """
-        # show B-Scan for given (i, j) index, the THzData class handles the direction
-        # (either horizontal or vertical)
+        # show B-Scan for given (i, j) index, the THzData class handles the
+        # direction (either horizontal or vertical)
 
         if not self.is_initialized:
             self.is_initialized = True
@@ -103,7 +104,8 @@ class BScanFrame(ParentFrame):
 
         self.axis.cla()
         self.data.make_b_scan(i, j)  # make the B-Scan image
-        self.image = self.axis.imshow(self.data.b_scan, interpolation='none', cmap='seismic',
+        self.image = self.axis.imshow(self.data.b_scan, interpolation='none',
+                                      cmap='seismic',
                                       extent=self.data.b_scan_extent)
         self.axis.set_xlabel(xlabel_string)
         self.axis.set_ylabel('Time (ps)')
@@ -138,6 +140,10 @@ class BScanFrame(ParentFrame):
         Prints the current (x,y) values that the mouse is over to the status
         bar along with the pixel value at that (x,y) location.
         """
+        # Since we are looking at the B-Scan, the y-axis now represents time
+        # and the x-axis on the plot represents either the x or y axis on the
+        # sample depending on the B-Scan orientation
+
         # if now point in the C-Scan has been clicked on yet there is no
         # information to display on the status bar
         if not self.is_initialized:
@@ -151,8 +157,18 @@ class BScanFrame(ParentFrame):
         xid = event.xdata
         yid = event.ydata
 
-        x_index = int((xid - self.data.x_min) / self.data.dx)
-        y_index = int((yid - self.data.y_min) / self.data.dy)
-        point_amp = self.data.b_scan[y_index, x_index]
+        if self.data.b_scan_dir == 'horizontal':
+            x_index = np.argmin(np.abs(self.data.x - xid))
+        elif self.data.b_scan_dir == 'vertical':
+            x_index = np.argmin(np.abs(self.data.y - xid))
+        else:
+            raise ValueError('B-Scan direction must be either "horizontal" or '
+                             '"vertical"!')
+
+        # need to flip the time array to index correctly. In the B-Scan the
+        # bottom of the y-axis corresponds to t[0], but in the B-Scan image
+        # this is the bottom row and accessed [-1].
+        t_index = np.argmin(np.abs(np.flipud(self.data.time) - yid))
+        point_amp = self.data.b_scan[t_index, x_index]
         status_string = '(%.4f, %.4f), [%.4f]' % (xid, yid, point_amp)
         self.status_bar.SetStatusText(status_string)

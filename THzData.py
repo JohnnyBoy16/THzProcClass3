@@ -359,8 +359,12 @@ class THzData(object):
         Generates a time of flight C-Scan that shows the time of flight in
         picoseconds of each pixel on the front surface.
         """
-        tof_index = self.waveform.argmax(axis=2)
         self.tof_c_scan = np.zeros((self.y_step, self.x_step))
+
+        if self.follow_gate_on:
+            tof_index = self.peak_bin[0, 1, :, :]
+        else:
+            tof_index = self.peak_bin[0, 0, :, :]
 
         for i in range(self.y_step):
             for j in range(self.x_step):
@@ -508,8 +512,10 @@ class THzData(object):
         # we want them in the columns. Thus the call to transpose after arranging the data
         if self.b_scan_dir == 'horizontal':
             self.b_scan = self.waveform[yid, :, :]
+            self.b_scan_extent = (self.x[0], self.x[-1], 0, self.time[-1])
         else:  # b_scan_dir == 'vertical'
             self.b_scan = self.waveform[:, xid, :]
+            self.b_scan_extent = (self.y[0], self.y[-1], 0, self.time[-1])
 
         # call to transpose is necessary to flip data axis, so x or y location is on the bottom and
         # time is along the y-axis on the plot
