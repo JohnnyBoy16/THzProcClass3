@@ -61,6 +61,9 @@ class AScanFrame(ParentFrame):
         # 3 = back follow gate
         self.gate_held = None
 
+        self.gate0 = None
+        self.gate1 = None
+
         # wx menu item that allows user to switch the A-Scan view to include
         # frequency information or not
         self.a_scan_view_menu = None
@@ -83,6 +86,10 @@ class AScanFrame(ParentFrame):
         # default to False because we generally want to see (x, y) coords to
         # match with physical location instead of index
         self.ij_indexing = False
+
+        self.freq_gate = np.zeros(2, dtype=int)
+        self.freq_gate[0] = np.argmin(np.abs(self.data.freq - 0.05))
+        self.freq_gate[1] = np.argmin(np.abs(self.data.freq - 3.0))
 
         self.modify_menu()
         self.connect_events()
@@ -243,12 +250,27 @@ class AScanFrame(ParentFrame):
 
         freq_waveform = np.fft.rfft(time_waveform) * self.data.dt
 
+        max_freq = 3.5
+        max_f_idx = np.argmin(np.abs(self.data.freq - max_freq))
+
+        freq = self.data.freq[:max_f_idx]
+        freq_waveform = freq_waveform[:max_f_idx]
+
         self.freq_axis.cla()
-        self.freq_axis.plot(self.data.freq, np.abs(freq_waveform), 'r')
+        # self.freq_axis.semilogy(freq, np.abs(freq_waveform), 'r')
+        self.freq_axis.plot(freq, np.abs(freq_waveform), 'r')
         self.freq_axis.set_xlabel('Frequency (THz)')
         self.freq_axis.set_ylabel('Amplitude')
         self.freq_axis.set_xlim(0, 3.5)
         self.freq_axis.grid()
+
+        if self.data.in_freq_mode:
+            # self.gate0 is the left frequency domain gate
+            gate0_x = self.data.freq[self.freq_gate[0]]
+            self.gate0 = self.freq_axis.axvline(gate0_x, color='b', picker=2)
+            # gate1 is the right frequency domain gate
+            gate1_x = self.data.freq[self.freq_gate[1]]
+            self.gate1 = self.freq_axis.axvline(gate1_x, color='g', picker=2)
 
     def switch_a_scan_view(self, event):
         """
@@ -341,6 +363,14 @@ class AScanFrame(ParentFrame):
         if not isinstance(event.artist, Line2D):
             return
 
+        # pass the event through so the handler that is called has access to
+        # the event location and stuff
+        if event.artist.axes == self.time_axis:
+            self.time_gate_handler(event)
+        else:  # on the frequency axis
+            self.freq_gate_handler(event)
+
+    def time_gate_handler(self, event):
         line = event.artist
         self.line_held = event.artist
         xdata = line.get_xdata()[0]
@@ -377,6 +407,17 @@ class AScanFrame(ParentFrame):
         line.set_linewidth(2.0)  # make the line clicked on bold
         self.figure_canvas.draw()  # update plot
 
+    def freq_gate_handler(self, event):
+        """
+        """
+        # store the line object that was clicked on in a variable so we can
+        # move it around with gate_slider() function
+        self.line_held = event.artist
+
+        # make the line that was clicked on bold
+        event.artist.set_linewidth(2.0)
+        self.figure_canvas.draw()
+
     def release_gate_handler(self, event):
         """
         Determines where the new gate will be when mouse is released.
@@ -393,6 +434,28 @@ class AScanFrame(ParentFrame):
 
         # if the user does not release in the image, exit
         if event.xdata is None or event.ydata is None:
+            return
+
+        # if line_held is one of the frequency domain gates, that means we are
+        # doing frequency domain plotting
+        if self.line_held == self.gate0 or self.line_held == self.gate1:
+            self.line_held.set_linewidth(1.0)  # return to normal line width
+
+            f = self.line_held.get_xdata()[0]
+            if self.line_held == self.gate0:
+                self.freq_gate[0] = np.argmin(np.abs(self.data.freq - f))
+            else:  # holding self.gate1
+                self.freq_gate[1] = np.argmin(np.abs(self.data.freq - f))
+
+            self.data.make_freq_c_scan(0, self.freq_gate[0], self.freq_gate[1])
+            # update A-Scan, Raw C-Scan and Interpolated C-Scan plots with the
+            # current information
+            self.plot()
+            self.holder.raw_c_scan_frame.update()
+            self.holder.interpolated_c_scan_frame.update()
+
+            self.line_held = None
+
             return
 
         # convert time value (xdata) to index

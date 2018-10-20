@@ -126,6 +126,11 @@ class THzData(object):
         # resize method has been called
         self.has_been_resized = False
 
+        # whether or not the C-Scan will be generated using frequency domain
+        # information. Default to False because we are usually interested in
+        # time domain info.
+        self.in_freq_mode = False
+
         # CONSTANTS ------------------------------------------------------------
 
         # 1 for the positive peak, 2 for the negative peak, prefer 1
@@ -354,6 +359,30 @@ class THzData(object):
                             self.waveform[i, j, self.peak_bin[1, 0, i, j]] < self.FSE_TOLERANCE):
                         self.c_scan[i, j] = 0.
 
+    def make_freq_c_scan(self, signal_type, gate0, gate1=None, is_index=True):
+        """
+        Generates a frequency domain C-Scan
+        :param signal_type: What type of frequency C-Scan is generated,
+                = 0: integrate between gate0 and gate1
+                = 1: value at gate0 only
+        :param gate0: The 1st gate
+        :param gate1: The 2nd gate
+        :param indexing: Whether the values in gate0 and gate1 are the index to
+            the frequency array or the frequency value itself. Should be either
+            'index' or 'frequency'
+        """
+
+        if not is_index:
+            gate0 = np.argmin(np.abs(self.freq - gate0))
+            gate1 = np.argmin(np.abs(self.freq - gate1))
+
+        if signal_type == 0 and gate1 is not None:  # integrate between gates
+            magnitude = np.abs(self.freq_waveform[:, :, gate0:gate1+1])
+            self.c_scan = np.sum(magnitude, axis=2) * self.df
+
+        if signal_type == 1:
+            self.c_scan = np.abs(self.data.freq_waveform[:, :, gate0])
+
     def make_time_of_flight_c_scan(self):
         """
         Generates a time of flight C-Scan that shows the time of flight in
@@ -370,17 +399,17 @@ class THzData(object):
             for j in range(self.x_step):
                 self.tof_c_scan[i, j] = self.time[tof_index[i, j]]
 
-    def take_fft(self, gate=None):
+    def gate_and_take_fft(self, gate=None):
         """
-        Generates a frequency representation of the data that is between the
-        specified follow gates. Peak Bin is used to follow the FSE.
+        Generates a frequency domain representation of the data by taking the
+        FFT of the part of the time domain waveforms that is gated by the
+        follow gates.
         """
-        pass
+
         # set up gated waveform so the area of interest from waveform (defined
         # by the gates in peak_bin) still has the proper number of data points
         # which is (wave_length//2 + 1) eg. 4096//2 + 1 = 2049
-        gated_waveform = np.zeros((self.y_step, self.x_step,
-                                   self.wave_length//2+1), dtype=complex)
+        gated_waveform = np.zeros(self.waveform.shape)
 
         if self.follow_gate_on:
             idx = 1

@@ -51,6 +51,9 @@ class RawCScanFrame(ParentFrame):
         # menu item that allows the user to change the colorbar orientation
         self.colorbar_dir_menu_button = None
 
+        # menu item that allows the user to switch to the frequency domain
+        self.switch_freq_button = wx.MenuItem
+
         self.modify_menu()
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
@@ -72,8 +75,14 @@ class RawCScanFrame(ParentFrame):
         self.colorbar_dir_menu_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
                                                     description)
 
+        title = 'Switch to Frequency Domain'
+        discription = title
+        self.switch_freq_button = wx.MenuItem(self.options_menu, wx.ID_ANY,
+                                              title, discription)
+
         self.options_menu.Append(self.rescale_colorbar_menu)
         self.options_menu.Append(self.colorbar_dir_menu_button)
+        self.options_menu.Append(self.switch_freq_button)
 
         self.menu_bar.Append(self.options_menu, '&Options')
         self.SetMenuBar(self.menu_bar)
@@ -129,6 +138,7 @@ class RawCScanFrame(ParentFrame):
         # wx events
         self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
         self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
+        self.Bind(wx.EVT_MENU, self.on_switch_to_freq, self.switch_freq_button)
 
     def motion_handler(self, event):
         """
@@ -251,6 +261,26 @@ class RawCScanFrame(ParentFrame):
         self.colorbar.update_normal(self.image)
 
         self.figure_canvas.draw()  # redraw image
+
+    def on_switch_to_freq(self, event):
+        """
+        Switches to frequency domain plotting
+        """
+
+        self.data.in_freq_mode = not self.data.in_freq_mode
+
+        if self.data.in_freq_mode:
+            self.holder.a_scan_frame.a_scan_only = True
+            self.data.gate_and_take_fft()
+            self.data.make_freq_c_scan(0, 0, 3.5, is_index=False)
+            self.holder.a_scan_frame.switch_a_scan_view(None)
+            self.update()
+            self.holder.interpolated_c_scan_frame.update()
+        else:
+            self.data.make_c_scan()
+            self.holder.a_scan_frame.plot()
+            self.update()
+            self.holder.interpolated_c_scan_frame.update()
 
     def change_colorbar_dir(self, event):
         """
