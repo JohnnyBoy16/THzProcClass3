@@ -79,6 +79,12 @@ class ReferenceFrame(ParentFrame):
 
         self.gate = [0, len(self.time)-1]
 
+        self.time_axis.set_xlabel('Time (ps)')
+        self.time_axis.set_ylabel('Amplitude')
+
+        self.freq_axis.set_xlabel('Frequency (THz)')
+        self.freq_axis.set_ylabel('Amplitude')
+
         self.plot_time_waveform()
         self.plot_freq_waveform()
         self.connect_events()
@@ -229,6 +235,7 @@ if __name__ == '__main__':
     # reference file that they wish to open
 
     import sys
+    import os
 
     import wx
 
@@ -247,6 +254,10 @@ if __name__ == '__main__':
             sys.exit(0)  # terminate program
 
         full_path = dlg.GetPath()
+
+    basedir, filename = os.path.split(full_path)
+    print(basedir)
+    print(filename)
 
     frame = ReferenceFrame(full_path)
 
