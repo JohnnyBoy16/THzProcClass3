@@ -59,6 +59,12 @@ class ReferenceFrame(ParentFrame):
         # start calculations and driving methods
         self.time, self.time_amp = read_reference_data(filename, basedir)
 
+        self.time_axis.set_xlabel('Time (ps)')
+        self.time_axis.set_ylabel('Amplitude')
+
+        self.freq_axis.set_xlabel('Frequency (THz)')
+        self.freq_axis.set_ylabel('Amplitude')
+
         # adjust time vector so it starts at zero, the THz has a global optical
         # delay value that it uses when a waveform is saved as a txt file
         self.time -= self.time[0]
