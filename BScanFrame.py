@@ -105,7 +105,7 @@ class BScanFrame(ParentFrame):
         self.axis.cla()
         self.data.make_b_scan(i, j)  # make the B-Scan image
         self.image = self.axis.imshow(self.data.b_scan, interpolation='none',
-                                      cmap='seismic',
+                                      cmap='seismic', aspect='auto',
                                       extent=self.data.b_scan_extent)
         self.axis.set_xlabel(xlabel_string)
         self.axis.set_ylabel('Time (ps)')
