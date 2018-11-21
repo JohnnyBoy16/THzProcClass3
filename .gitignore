@@ -1,6 +1,7 @@
 # Ignore pycharm stuff
 .idea
 __pycache__
+*.pyc
 
 # Ignore the driving / testing file because it changes a lot
 test.py
