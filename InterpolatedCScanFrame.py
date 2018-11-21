@@ -10,7 +10,7 @@ class InterpolatedCScanFrame(ParentFrame):
     """
     Frame for the Interpolated C-Scan.
     """
-    # this plot is not interactive. Clicking in the image will not change the 
+    # this plot is not interactive. Clicking in the image will not change the
     # A-Scan. However, the image will change when the gates are updated.
 
     def __init__(self, holder, data, title=None):
@@ -25,7 +25,9 @@ class InterpolatedCScanFrame(ParentFrame):
         if title is None:
             title = 'Interpolated C-Scan Test'
 
-        super().__init__(title)  # call parent class
+        # call inherited ParentFrame constructor using the arguments so it runs
+        # in python 2
+        super(InterpolatedCScanFrame, self).__init__(title)
 
         # the instance of holder class for this frame
         self.holder = holder
@@ -51,24 +53,24 @@ class InterpolatedCScanFrame(ParentFrame):
         self.add_options_menu()
         self.connect_events()
 
-        # make sure to call plot so the interpolated image is plotted when 
+        # make sure to call plot so the interpolated image is plotted when
         # starting
         self.plot()
-        
+
         # close the figure, if this is not done, a normal matplotlib figure for
         # this image will pop up if plt.show() is called after creating the GUI
         plt.close(self.figure)
 
     def add_options_menu(self):
         """
-        Adds an options menu to the frame with on options to change to the 
+        Adds an options menu to the frame with on options to change to the
         orientation of the colorbar
         """
         self.options_menu = wx.Menu()
 
         title = 'Change Colorbar Orientation'
         description = 'Changes the colorbar orientation between vertical and horizontal'
-        self.change_colorbar_dir_button = wx.MenuItem(self.options_menu, wx.ID_ANY, 
+        self.change_colorbar_dir_button = wx.MenuItem(self.options_menu, wx.ID_ANY,
                                                       title, description)
 
         self.options_menu.Append(self.change_colorbar_dir_button)
@@ -101,12 +103,12 @@ class InterpolatedCScanFrame(ParentFrame):
 
     def update(self):
         """
-        Updates the figure, by clearing the axis and remaking stuff, including 
+        Updates the figure, by clearing the axis and remaking stuff, including
         the colorbar
         """
-        # At the moment it is necessary to have a separate method from plot(), 
-        # because it appears that there must be a call to 
-        # colorbar.update_bruteforce() to have the colorbar actually update. 
+        # At the moment it is necessary to have a separate method from plot(),
+        # because it appears that there must be a call to
+        # colorbar.update_bruteforce() to have the colorbar actually update.
         # Using self.axis.cla() does not actually remove the colorbar
         self.axis.cla()
         self.image = self.axis.imshow(self.data.c_scan, interpolation='bilinear', cmap='jet',
@@ -119,7 +121,7 @@ class InterpolatedCScanFrame(ParentFrame):
 
     def motion_handler(self, event):
         """
-        Prints the current (x,y) values that the mouse is over to the status 
+        Prints the current (x,y) values that the mouse is over to the status
         bar along with the pixel value at that (x,y) location.
         """
         xid = event.xdata
@@ -148,7 +150,7 @@ class InterpolatedCScanFrame(ParentFrame):
         # need to specify which axis the colorbar will be drawn on. Otherwise
         # it will attach itself to the most recent figure object, which may not
         # be the figure from this frame if other plots have been created
-        self.colorbar = plt.colorbar(self.image, ax=self.axis, 
+        self.colorbar = plt.colorbar(self.image, ax=self.axis,
                                      orientation=self.colorbar_dir)
 
         self.figure_canvas.draw()

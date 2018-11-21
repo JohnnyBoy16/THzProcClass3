@@ -25,7 +25,9 @@ class BScanFrame(ParentFrame):
         if title is None:
             title = 'B-Scan Frame'
 
-        super().__init__(title)
+        # call the inherited ParentFrame constructor using the arguments so
+        # that the code works in python 2
+        super(BScanFrame, self).__init__(title)
 
         # the class instance holding stuff together
         self.holder = holder

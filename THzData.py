@@ -362,9 +362,9 @@ class THzData(object):
     def make_freq_c_scan(self, signal_type, gate0, gate1=None, is_index=True):
         """
         Generates a frequency domain C-Scan
-        :param signal_type: What type of frequency C-Scan is generated,
+        :param signal_type: The type of frequency C-Scan is generated,
                 = 0: integrate between gate0 and gate1
-                = 1: value at gate0 only
+                = 1: value at gate0 only, single index slice
         :param gate0: The 1st gate
         :param gate1: The 2nd gate
         :param indexing: Whether the values in gate0 and gate1 are the index to
@@ -390,10 +390,12 @@ class THzData(object):
         """
         self.tof_c_scan = np.zeros((self.y_step, self.x_step))
 
-        if self.follow_gate_on:
-            tof_index = self.peak_bin[0, 1, :, :]
-        else:
-            tof_index = self.peak_bin[0, 0, :, :]
+        # if self.follow_gate_on:
+        #     tof_index = self.peak_bin[0, 1, :, :]
+        # else:
+        #     tof_index = self.peak_bin[0, 0, :, :]
+
+        tof_index = self.peak_bin[0, 0, :, :]
 
         for i in range(self.y_step):
             for j in range(self.x_step):
@@ -880,7 +882,6 @@ class RefData(object):
                 be done to the raw data. If passed as a numerical value the last
                 time vale will be taken as that value.
         """
-        from base_util.base_util import read_reference_data
 
         # the array of time values and waveform amplitudes
         self.time, self.waveform = read_reference_data(filename, basedir, zero)
@@ -947,3 +948,35 @@ class RefData(object):
             self.freq_waveform[gate[1]:] = 0
 
         self.freq_waveform = np.fft.rfft(self.freq_waveform) * self.dt
+
+
+def read_reference_data(filename, basedir=None, zero=True):
+    """
+    Reads in a reference file and returns the time values along with amplitudes
+
+    :param filename: The name of the file to be loaded, or the full path if
+        basedir is None
+    :param basedir: The base directory that contains the file. If None,
+        filename is expected to be the full path
+    :param zero: If True (default), the reference signal time array is returned
+        with zero as the first value. If False, no modification is made.
+
+    :return: optical_delay: Array of time values
+    :return: ref_amp: Array of amplitude values
+    """
+    import pandas as pd
+
+    # allow the user to enter full path in filename parameter
+    if basedir is not None:
+        filename = os.path.join(basedir, filename)
+
+    # Read in the reference waveform and separate out the optical delay (time)
+    # and the reference amplitude
+    reference_data = pd.read_csv(filename, delimiter='\t')
+    optical_delay = reference_data['Optical Delay/ps'].values
+    ref_amp = reference_data['Raw_Data/a.u.'].values
+
+    if zero:  # adjust optical delay so it starts at zero
+        optical_delay -= optical_delay[0]
+
+    return optical_delay, ref_amp
