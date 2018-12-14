@@ -147,7 +147,16 @@ class THzData(object):
         self.AMP_CORRECTION_300_PAR = [0., 35., 5.0, 1., 240., 300., 1., 4.5,
                                        4.]
 
+        # controls how much (as a multiplier * resolution) how much the lines
+        # shift during remapping
         self.X_CORRECTION_TOLERANCE = 0.1
+        # self.X_CORRECTION_TOLERANCE = 0.75  # for 50 um resolution
+        # self.X_CORRECTION_TOLERANCE = 1.5  # for 25 um resolution
+        # self.X_CORRECTION_TOLERANCE = 2.5  # for 15 um resolution
+
+        # TODO: (John): The X_CORRECTION_TOLERANCE seems to be a constant value
+        # TODO: instead of a constant multiplied by the scan resolution, this
+        # TODO: value seems to be around 0.35 ~ 0.40 mm
 
         # half pulse width for bracketing the front surface echo this value was
         # originally 2 in Thomas's THzProc
