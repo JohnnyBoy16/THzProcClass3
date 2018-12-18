@@ -25,7 +25,8 @@ class THzData(object):
     """
 
     def __init__(self, filename, basedir=None, gate=None, follow_gate_on=True,
-                 signal_type=1, center=False, print_on=True, **kwargs):
+                 signal_type=1, center=False, print_on=True, trend_off=0,
+                 pulse_length=3):
         """
         Constructor method
         :param filename: Either the filename or full path to the tvl file. If
@@ -40,6 +41,10 @@ class THzData(object):
             is at the center of the C-Scan image (default False)
         :param print_on: If True (default), will print information about the
             scan to the console, such as number of X & Y steps, resolution, etc.
+        :param trend_off: Method to choose to remove the baseline trend in near-
+            field imaging. Leave as 0 (default) to do not baseline removal.
+        :param pulse_length: The length in picoseconds within which to search
+            when determining peak to peak amplitude.
         """
 
         # handle what happens if they don't pass through gate
@@ -137,8 +142,7 @@ class THzData(object):
         self.PICK_PEAK = 1
 
         # provides algorithm for removing baseline trend in near-field imaging.
-        # leave 0 for now
-        self.TREND_OFF = 0
+        self.TREND_OFF = trend_off
 
         # VERY constant: do not change unless you have a good reason to
         self.FSE_TOLERANCE = -0.17
@@ -151,12 +155,12 @@ class THzData(object):
         # shift during remapping
         self.X_CORRECTION_TOLERANCE = 0.1
         # self.X_CORRECTION_TOLERANCE = 0.75  # for 50 um resolution
-        # self.X_CORRECTION_TOLERANCE = 1.5  # for 25 um resolution
+        # self.X_CORRECTION_TOLERANCE = 2.0  # for 25 um resolution
         # self.X_CORRECTION_TOLERANCE = 2.5  # for 15 um resolution
 
         # TODO: (John): The X_CORRECTION_TOLERANCE seems to be a constant value
         # TODO: instead of a constant multiplied by the scan resolution, this
-        # TODO: value seems to be around 0.35 ~ 0.40 mm
+        # TODO: value seems to be around 0.35 ~ 0.40 mm, might actually be 50
 
         # half pulse width for bracketing the front surface echo this value was
         # originally 2 in Thomas's THzProc
@@ -167,11 +171,7 @@ class THzData(object):
         # in the follow gates is found, then the minimum peak that defines the
         # Vpp with can only a maximum of PULSE_LENGTH * HALF_PULSE ps away. The
         # length of the half pulse is defined by HALF_PULSE
-        if 'pulse_length' in kwargs:
-            self.PULSE_LENGTH = kwargs['pulse_length']
-        else:
-            # 3 is the original value from Thomas's THzProc
-            self.PULSE_LENGTH = 3
+        self.PULSE_LENGTH = pulse_length
 
         # difference that a point is allowed to deviate (as a ratio with
         # respect to resolution) from its desired coordinate
@@ -239,9 +239,23 @@ class THzData(object):
         self.find_peaks()
 
         # do not use x_min and y_min for extent because they do not represent
-        # the true x and y values after remap has been called
-        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
-        self.b_scan_extent = (self.x[0], self.x[-1], 0, self.time_length)
+        # the true x and y values after remap has been called.
+        # Add half of a pixel length to all sides of the extent boundary
+        # because matplotlib uses the coordinate system as the center of pixels.
+        # On an image with (i, j) index coordinates, the center of the top left
+        # pixel is treated as (0, 0), see documentation on plt.imshow() here
+        # https://matplotlib.org/api/_as_gen/matplotlib.pyplot.imshow.html
+        # especially look at the description of `extent` parameter
+
+        self.c_scan_extent = (self.x[0] - self.true_x_res/2,
+                              self.x[-1] + self.true_x_res/2,
+                              self.y[-1] - self.true_y_res/2,
+                              self.y[0] + self.true_y_res/2)
+
+        self.b_scan_extent = (self.x[0] - self.true_x_res/2,
+                              self.x[-1] + self.true_x_res/2,
+                              0 - self.dt/2,
+                              self.time_length + self.dt/2)
 
         # Generate the C-Scan
         self.make_c_scan(self.signal_type)
@@ -265,12 +279,18 @@ class THzData(object):
                         7: median amp
                         8: min amp
                         9: max amp
+                        10: ratio between FSE/BSE.
         """
 
         # if user does not pass through a value default to the one that is set
         # by the class instance
         if signal_type is None:
             signal_type = self.signal_type
+
+        if self.follow_gate_on:
+            idx = 1
+        else:
+            idx = 0
 
         # TODO: work on vectorizing code to avoid the for loops
         # it seems that if using peak_bin we can't vectorize, look into solution for this
@@ -286,10 +306,6 @@ class THzData(object):
         # use Vpp within the follow gates if on, else use Vpp across entire A-Scan
         # It appears that using peak bin does not allow for vectorization
         elif signal_type == 1:
-            if self.follow_gate_on:
-                idx = 1
-            else:
-                idx = 0
             for i in range(self.y_step):
                 for j in range(self.x_step):
                     max_amp = self.waveform[i, j, self.peak_bin[0, idx, i, j]]
@@ -359,6 +375,25 @@ class THzData(object):
                     L = self.peak_bin[3, self.follow_gate_on, i, j]
                     R = self.peak_bin[4, self.follow_gate_on, i, j]
                     self.c_scan[i, j] = np.amax(self.waveform[i, j, L:R])
+
+        # use the peak to peak amplitude of the current follow-gate and then
+        # find the max and minimum value of the wave that is left over after
+        # the rear follow gate
+        elif signal_type == 10:
+            for i in range(self.y_step):
+                for j in range(self.x_step):
+                    # get Vpp within the follow gate
+                    L = self.peak_bin[3, idx, i, j]
+                    R = self.peak_bin[4, idx, i, j]
+                    fse_max = np.amax(self.waveform[i, j, L:R])
+                    fse_min = np.amin(self.waveform[i, j, L:R])
+
+                    # assume that other Vpp occurs after this gate
+                    bse_max = np.amax(self.waveform[i, j, R:])
+                    bse_min = np.amin(self.waveform[i, j, R:])
+
+                    # make ration of FSE / BSE
+                    self.c_scan[i, j] = (fse_max-fse_min) / (bse_max-bse_min)
 
         # 27JAN2015 FSE handle: if FSE too small, throw away this location
         if signal_type != 0 and self.FSE_TOLERANCE > 0:
