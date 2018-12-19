@@ -20,7 +20,10 @@ class ParentFrame(wx.Frame):
         :param subplot_grid: The axes grid layout the figure is to have.
             Expected as (nrows, ncols)
         """
-        super().__init__(None, -1, title)
+
+        # call the wx.Frame inherited constructor, use the arguments so it runs
+        # in python 2
+        super(ParentFrame, self).__init__(None, -1, title)
 
         # holds the figure object
         self.figure = None

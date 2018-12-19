@@ -32,7 +32,9 @@ class AScanFrame(ParentFrame):
         else:
             subplot_grid = (2, 1)  # need more than one axis
 
-        super().__init__(title, subplot_grid)  # call parent class
+        # call inherited class constructor, specify AScanFrame and self as
+        # arguments so this runs in python 2
+        super(AScanFrame, self).__init__(title, subplot_grid)
 
         self.holder = holder
 

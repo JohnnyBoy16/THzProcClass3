@@ -25,7 +25,9 @@ class BScanFrame(ParentFrame):
         if title is None:
             title = 'B-Scan Frame'
 
-        super().__init__(title)
+        # call the inherited ParentFrame constructor using the arguments so
+        # that the code works in python 2
+        super(BScanFrame, self).__init__(title)
 
         # the class instance holding stuff together
         self.holder = holder
@@ -105,7 +107,7 @@ class BScanFrame(ParentFrame):
         self.axis.cla()
         self.data.make_b_scan(i, j)  # make the B-Scan image
         self.image = self.axis.imshow(self.data.b_scan, interpolation='none',
-                                      cmap='seismic',
+                                      cmap='seismic', aspect='auto',
                                       extent=self.data.b_scan_extent)
         self.axis.set_xlabel(xlabel_string)
         self.axis.set_ylabel('Time (ps)')

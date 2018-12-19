@@ -24,7 +24,9 @@ class RawCScanFrame(ParentFrame):
         if title is None:
             title = 'Raw C-Scan Frame'
 
-        super().__init__(title)  # call parent class
+        # call the inherited ParentFrame constructor using the arguments so it
+        # runs in python 2
+        super(RawCScanFrame, self).__init__(title)  # call parent class
 
         self.holder = holder
 

@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from THzProc.ParentFrame import ParentFrame
-from base_util.base_util import read_reference_data
+from THzProc.THzData import read_reference_data
 
 
 class ReferenceFrame(ParentFrame):
@@ -30,7 +30,9 @@ class ReferenceFrame(ParentFrame):
 
         # self.axis will come back as an array with each subplot axis since
         # we are passing through a tuple that is NOT (1, 1)
-        super().__init__(title, (2, 1))
+
+        # call inherited constructor with arguments so it works in python 2
+        super(ReferenceFrame, self).__init__(title, (2, 1))
 
         # the time domain axis
         self.time_axis = self.axis[0]
