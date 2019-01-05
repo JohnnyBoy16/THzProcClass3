@@ -250,8 +250,8 @@ class THzData(object):
 
         self.c_scan_extent = (self.x[0] - self.true_x_res/2,
                               self.x[-1] + self.true_x_res/2,
-                              self.y[-1] - self.true_y_res/2,
-                              self.y[0] + self.true_y_res/2)
+                              self.y[-1] + self.true_y_res/2,
+                              self.y[0] - self.true_y_res/2)
 
         self.b_scan_extent = (self.x[0] - self.true_x_res/2,
                               self.x[-1] + self.true_x_res/2,
