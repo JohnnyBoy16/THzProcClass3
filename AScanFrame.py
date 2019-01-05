@@ -545,7 +545,8 @@ class ChangeGateFrame(wx.Frame):
         """
         # this frame exists to hold the ChangeGatePanel that's about it
 
-        super().__init__(parent, title='Change Gates ...', size=(450, 200))
+        super(ChangeGateFrame, self).__init__(parent, title='Change Gates ...',
+                                              size=(450, 200))
 
         self.holder = holder
 
@@ -567,7 +568,7 @@ class _ChangeGatePanel(wx.Panel):
         :param parent: The parent frame that this panel is being called by
         :param data: An instance of the THzData class
         """
-        super().__init__(parent)
+        super(_ChangeGatePanel, self).__init__(parent)
 
         # store the parent Frame that created this panel
         self.parent = parent
@@ -661,7 +662,8 @@ class _ChangeGatePanel(wx.Panel):
         self.data.make_c_scan()
 
         # update the A-Scan, Raw C-Scan, and Interpolated C-Scan frames
-        self.parent.holder.a_scan_frame.plot()
+        if self.parent.holder.a_scan_frame.is_initialized:
+            self.parent.holder.a_scan_frame.plot()
         self.parent.holder.raw_c_scan_frame.update()
         self.parent.holder.interpolated_c_scan_frame.update()
 
