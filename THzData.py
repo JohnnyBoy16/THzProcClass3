@@ -26,7 +26,7 @@ class THzData(object):
 
     def __init__(self, filename, basedir=None, gate=None, follow_gate_on=True,
                  signal_type=1, center=False, print_on=True, trend_off=0,
-                 pulse_length=3):
+                 pulse_length=3, x_cor_tol=0.1):
         """
         Constructor method
         :param filename: Either the filename or full path to the tvl file. If
@@ -153,7 +153,8 @@ class THzData(object):
 
         # controls how much (as a multiplier * resolution) how much the lines
         # shift during remapping
-        self.X_CORRECTION_TOLERANCE = 0.1
+        self.X_CORRECTION_TOLERANCE = x_cor_tol
+        # self.X_CORRECTION_TOLERANCE = 0.1
         # self.X_CORRECTION_TOLERANCE = 0.75  # for 50 um resolution
         # self.X_CORRECTION_TOLERANCE = 2.0  # for 25 um resolution
         # self.X_CORRECTION_TOLERANCE = 2.5  # for 15 um resolution
