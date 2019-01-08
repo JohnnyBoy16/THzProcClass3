@@ -56,6 +56,10 @@ class RawCScanFrame(ParentFrame):
         # menu item that allows the user to switch to the frequency domain
         self.switch_freq_button = wx.MenuItem
 
+        # option button to put in the options menu (recursion? LOL)
+        # this opens the options menu popup
+        self.options_button = wx.MenuItem
+
         self.modify_menu()
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
@@ -78,13 +82,19 @@ class RawCScanFrame(ParentFrame):
                                                     description)
 
         title = 'Switch to Frequency Domain'
-        discription = title
+        description = title
         self.switch_freq_button = wx.MenuItem(self.options_menu, wx.ID_ANY,
-                                              title, discription)
+                                              title, description)
+
+        title = 'Options Menu'
+        description = 'Opens the Options Menu'
+        self.options_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
+                                          description)
 
         self.options_menu.Append(self.rescale_colorbar_menu)
         self.options_menu.Append(self.colorbar_dir_menu_button)
         self.options_menu.Append(self.switch_freq_button)
+        self.options_menu.Append(self.options_button)
 
         self.menu_bar.Append(self.options_menu, '&Options')
         self.SetMenuBar(self.menu_bar)
@@ -141,6 +151,7 @@ class RawCScanFrame(ParentFrame):
         self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
         self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
         self.Bind(wx.EVT_MENU, self.on_switch_to_freq, self.switch_freq_button)
+        self.Bind(wx.EVT_MENU, self.on_options_button, self.options_button)
 
     def motion_handler(self, event):
         """
@@ -150,8 +161,10 @@ class RawCScanFrame(ParentFrame):
         xid = event.xdata
         yid = event.ydata
         if xid is not None and yid is not None:
-            x_index = int((xid - self.data.x_min) / self.data.dx)
-            y_index = int((yid - self.data.y_min) / self.data.dy)
+            # x_index = int((xid - self.data.x_min) / self.data.dx)
+            # y_index = int((yid - self.data.y_min) / self.data.dy)
+            x_index = np.argmin(np.abs(self.data.x - xid))
+            y_index = np.argmin(np.abs(self.data.y - yid))
             point_amp = self.data.c_scan[y_index, x_index]
             status_string = '(%.4f, %.4f), [%.4f]' % (xid, yid, point_amp)
             self.status_bar.SetStatusText(status_string)
@@ -176,8 +189,10 @@ class RawCScanFrame(ParentFrame):
         x_data = event.xdata
         y_data = event.ydata
 
-        self.i_index = int((y_data - self.data.y_min) / self.data.dy)
-        self.j_index = int((x_data - self.data.x_min) / self.data.dx)
+        # self.i_index = int((y_data - self.data.y_min) / self.data.dy)
+        # self.j_index = int((x_data - self.data.x_min) / self.data.dx)
+        self.i_index = np.argmin(np.abs(self.data.y - y_data))
+        self.j_index = np.argmin(np.abs(self.data.x - x_data))
 
         # have the try catch blocks here so if the use is not using the A-Scan
         # or B-Scan frame the code will still run. An AttributeError will be
@@ -303,3 +318,91 @@ class RawCScanFrame(ParentFrame):
                                      orientation=self.colorbar_dir)
 
         self.figure_canvas.draw()
+
+    def on_options_button(self, event):
+        """
+        Opens the options menu
+        """
+        OptionsFrame(self, self.holder, self.data)
+
+
+class OptionsFrame(wx.Frame):
+    """
+    Frame to hold the Options Menu
+    """
+
+    def __init__(self, parent, holder, data):
+        """
+        Constructor method
+        """
+        super(OptionsFrame, self).__init__(parent, title='Options',
+                                           size=(450, 250))
+
+        self.panel = _OptionsPanel(self, holder, data)
+
+        self.Show(True)
+
+
+class _OptionsPanel(wx.Panel):
+    """
+    Panel to hold the options
+    """
+
+    def __init__(self, parent, holder, data):
+        """
+        Constructor method.
+        :param data: An instance of the THzData class
+        """
+
+        super(_OptionsPanel, self).__init__(parent)
+
+        self.holder = holder
+        self.data = data
+
+        self.checkbox = wx.CheckBox
+
+        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.gbs = wx.GridBagSizer(vgap=10, hgap=10)
+
+        self.add_controls()
+        self.bind_controls()
+
+        # set the main sizer to the panel
+        self.SetSizer(self.main_sizer)
+
+    def add_controls(self):
+        """
+        Adds controls to the panel
+        """
+
+        self.checkbox = wx.CheckBox(self, label='Use Ratio for C-Scan Image')
+
+        if self.data.signal_type == 10:
+            self.checkbox.SetValue(True)
+
+        self.gbs.Add(self.checkbox, (0, 0))
+
+        self.main_sizer.Add(self.gbs, 1, wx.ALL | wx.EXPAND, 10)
+
+    def bind_controls(self):
+        """
+        Binds interactive things to their respective handlers
+        """
+        self.checkbox.Bind(wx.EVT_CHECKBOX, self.on_use_ratio)
+
+    def on_use_ratio(self, event):
+        """
+        Toggle the use ratio checkbox between on/off, and handle when happens
+        when it is toggled.
+        """
+
+        if self.checkbox.GetValue():
+            # signal type 10 is the ratio option
+            self.data.signal_type = 10
+            self.data.make_c_scan()
+        else:
+            # go to Vpp
+            self.data.signal_type = 1
+            self.data.make_c_scan()
+
+        self.holder.raw_c_scan_frame.update()
