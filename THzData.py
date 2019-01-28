@@ -522,21 +522,26 @@ class THzData(object):
         else:
             raise ValueError('Parameter indexing must be either "xy" or "ij"')
 
-        self.x_small = self.x[j0:j1]
+        # Make sure to add +1 to all of the numpy slicing because we want to
+        # include the index that is as close as possible to the parameters that
+        # are passed in. Normal numpy slicing is exclusive of the endpoint.
+        self.x_small = self.x[j0:j1+1]
         self.x_step_small = len(self.x_small)
 
-        self.y_small = self.y[i0:i1]
+        self.y_small = self.y[i0:i1+1]
         self.y_step_small = len(self.y_small)
 
-        self.waveform_small = self.waveform[i0:i1, j0:j1, :]
+        self.waveform_small = self.waveform[i0:i1+1, j0:j1+1, :]
 
-        self.c_scan_small = self.c_scan[i0:i1, j0:j1]
+        self.c_scan_small = self.c_scan[i0:i1+1, j0:j1+1]
 
-        self.small_extent = (self.x_small.min(), self.x_small.max(), self.y_small.max(),
-                             self.y_small.min())
+        self.small_extent = (self.x_small[0] - self.true_x_res/2,
+                             self.x_small[-1] + self.true_x_res/2,
+                             self.y_small[-1] + self.true_y_res/2,
+                             self.y_small[0] - self.true_y_res/2)
 
         if self.tof_c_scan is not None:
-            self.tof_c_scan_small = self.tof_c_scan[i0:i1, j0:j1]
+            self.tof_c_scan_small = self.tof_c_scan[i0:i1+1, j0:j1+1]
 
         if return_indices:
             return (i0, i1, j0, j1)
