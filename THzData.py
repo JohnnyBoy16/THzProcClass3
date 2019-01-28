@@ -377,24 +377,25 @@ class THzData(object):
                     R = self.peak_bin[4, self.follow_gate_on, i, j]
                     self.c_scan[i, j] = np.amax(self.waveform[i, j, L:R])
 
-        # use the peak to peak amplitude of the current follow-gate and then
-        # find the max and minimum value of the wave that is left over after
-        # the rear follow gate
+        # Ratio C-Scan that is follow gates / lead gates
+        # Assume that the front surface is gated between the front gates and
+        # whatever slice we are interested in is between the follow gates.
         elif signal_type == 10:
             for i in range(self.y_step):
                 for j in range(self.x_step):
-                    # get Vpp within the follow gate
-                    L = self.peak_bin[3, idx, i, j]
-                    R = self.peak_bin[4, idx, i, j]
-                    fse_max = np.amax(self.waveform[i, j, L:R])
-                    fse_min = np.amin(self.waveform[i, j, L:R])
+                    # get Vpp within the front gate
+                    L, R = self.gate[0]
+                    fse_max = self.waveform[i, j, L:R].max()
+                    fse_min = self.waveform[i, j, L:R].min()
 
-                    # assume that other Vpp occurs after this gate
-                    bse_max = np.amax(self.waveform[i, j, R:])
-                    bse_min = np.amin(self.waveform[i, j, R:])
+                    L = self.peak_bin[3, 1, i, j]
+                    R = self.peak_bin[4, 1, i, j]
 
-                    # make ration of FSE / BSE
-                    self.c_scan[i, j] = (fse_max-fse_min) / (bse_max-bse_min)
+                    gate_max = self.waveform[i, j, L:R].max()
+                    gate_min = self.waveform[i, j, L:R].min()
+
+                    # make ratio of Vpp in gate / FSE
+                    self.c_scan[i, j] = (gate_max-gate_min) / (fse_max-fse_min)
 
         # 27JAN2015 FSE handle: if FSE too small, throw away this location
         if signal_type != 0 and self.FSE_TOLERANCE > 0:
@@ -403,6 +404,10 @@ class THzData(object):
                     if (self.waveform[i, j, self.peak_bin[0, 0, i, j]] -
                             self.waveform[i, j, self.peak_bin[1, 0, i, j]] < self.FSE_TOLERANCE):
                         self.c_scan[i, j] = 0.
+
+        if self.has_been_resized:
+            i0, i1, j0, j1 = self.resize_indices
+            self.c_scan_small = self.c_scan[i0:i1+1, j0:j1+1]
 
     def make_freq_c_scan(self, signal_type, gate0, gate1=None, is_index=True):
         """
@@ -522,21 +527,29 @@ class THzData(object):
         else:
             raise ValueError('Parameter indexing must be either "xy" or "ij"')
 
-        self.x_small = self.x[j0:j1]
+        # Make sure to add +1 to all of the numpy slicing because we want to
+        # include the index that is as close as possible to the parameters that
+        # are passed in. Normal numpy slicing is exclusive of the endpoint.
+
+        self.resize_indices = (i0, i1, j0, j1)
+
+        self.x_small = self.x[j0:j1+1]
         self.x_step_small = len(self.x_small)
 
-        self.y_small = self.y[i0:i1]
+        self.y_small = self.y[i0:i1+1]
         self.y_step_small = len(self.y_small)
 
-        self.waveform_small = self.waveform[i0:i1, j0:j1, :]
+        self.waveform_small = self.waveform[i0:i1+1, j0:j1+1, :]
 
-        self.c_scan_small = self.c_scan[i0:i1, j0:j1]
+        self.c_scan_small = self.c_scan[i0:i1+1, j0:j1+1]
 
-        self.small_extent = (self.x_small.min(), self.x_small.max(), self.y_small.max(),
-                             self.y_small.min())
+        self.small_extent = (self.x_small[0] - self.true_x_res/2,
+                             self.x_small[-1] + self.true_x_res/2,
+                             self.y_small[-1] + self.true_y_res/2,
+                             self.y_small[0] - self.true_y_res/2)
 
         if self.tof_c_scan is not None:
-            self.tof_c_scan_small = self.tof_c_scan[i0:i1, j0:j1]
+            self.tof_c_scan_small = self.tof_c_scan[i0:i1+1, j0:j1+1]
 
         if return_indices:
             return (i0, i1, j0, j1)

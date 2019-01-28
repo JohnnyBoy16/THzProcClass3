@@ -267,8 +267,11 @@ class RawCScanFrame(ParentFrame):
         i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
         i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
 
+        # can get the data matrix with image.get_array()
+        area = self.image.get_array()[i0:i1+1, j0:j1+1]
+
         # want to include the bounds in calculation, so add 1 to be inclusive
-        area = self.data.c_scan[i0:i1+1, j0:j1+1]
+        # area = self.data.c_scan[i0:i1+1, j0:j1+1]
 
         # resent vmin and vmax to be the min and max of area inside of plot
         # bounds
