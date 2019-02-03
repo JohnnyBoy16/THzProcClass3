@@ -527,6 +527,10 @@ class THzData(object):
         else:
             raise ValueError('Parameter indexing must be either "xy" or "ij"')
 
+        # Make sure to add +1 to all of the numpy slicing because we want to
+        # include the index that is as close as possible to the parameters that
+        # are passed in. Normal numpy slicing is exclusive of the endpoint.
+
         self.resize_indices = (i0, i1, j0, j1)
 
         self.x_small = self.x[j0:j1+1]
@@ -539,8 +543,10 @@ class THzData(object):
 
         self.c_scan_small = self.c_scan[i0:i1+1, j0:j1+1]
 
-        self.small_extent = (self.x_small.min(), self.x_small.max(), self.y_small.max(),
-                             self.y_small.min())
+        self.small_extent = (self.x_small[0] - self.true_x_res/2,
+                             self.x_small[-1] + self.true_x_res/2,
+                             self.y_small[-1] + self.true_y_res/2,
+                             self.y_small[0] - self.true_y_res/2)
 
         if self.tof_c_scan is not None:
             self.tof_c_scan_small = self.tof_c_scan[i0:i1+1, j0:j1+1]
@@ -565,15 +571,17 @@ class THzData(object):
         # update extent
         self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
 
-    def adjust_coordinates(self, i, j):
+    def adjust_coordinates(self, i, j, y=0, x=0):
         """
         Adjusts the coordinate system so that the point at index (i, j) is at
-        (0, 0).
-        :param i: The index of the new center row
-        :param j: The index of the new center column
+        (x, y).
+        :param i: The index of the row that is to be at y
+        :param j: The index of the column that is to be at x
+        :param y: The y-coordinate value that row i is to have
+        :param x: The x-coordinate value that column j is to have
         """
-        self.x -= self.x[j]
-        self.y -= self.y[i]
+        self.x -= self.x[j] - x
+        self.y -= self.y[i] - y
 
         # reset min and max values for each coordinate
         self.x_min = self.x[0]
@@ -581,8 +589,23 @@ class THzData(object):
         self.y_min = self.y[0]
         self.y_max = self.y[-1]
 
+        # if the resize method has been called. Call it again with the
+        # boundary indices to shift the resized x and y coordinate arrays.
+        if self.has_been_resized:
+            self.resize(self.resize_indices, indexing='ij')
+
         # reset extent
-        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
+        self._calculate_c_scan_extent()
+
+    def _calculate_c_scan_extent(self):
+        """
+        Helper method to calculate the C-Scan extent so this is done in one
+        place.
+        """
+        self.c_scan_extent = (self.x[0] - self.true_x_res/2,
+                              self.x[-1] + self.true_x_res/2,
+                              self.y[-1] + self.true_y_res/2,
+                              self.y[0] - self.true_y_res/2)
 
     def make_b_scan(self, yid, xid):
         """
