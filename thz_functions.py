@@ -230,6 +230,19 @@ def ReMap(waveform, X, Y, Xmax, Xmin, Ymin, Xres, Yres, Xstep, Ystep, ScanType, 
 
     # average several "blank" waveforms (i.e. not on the sample) at beginning and end of row as reference to be substracted from the sample waveforms
     # assume there are at least some (1mm or more preferred) "blank" at beginning and end of row and X spacing is sufficiently smaller (0.05mm preferred)
+
+    # for all options, always correct all waveform amplitudes by normalizing
+    # the corresponding reflections off front AL patch   28JAN2019
+    if TrendOff!=0:
+        refwav=np.zeros(wavlen,dtype='<f')
+        refwav[:]=WaveformNew[Ystep//2,Xstep//2,:]  # take central waveform as rerference
+        VppRef=np.amax(refwav[0:wavlen//3])-np.amin(refwav[0:wavlen//3]) # assume the AL reflection is located within frist 1/3 of waveform
+        for i in range(Ystep):
+            for j in range(Xstep):
+                VppThisWav=np.amax(WaveformNew[i,j,0:wavlen//3])-np.amin(WaveformNew[i,j,0:wavlen//3])
+                fac=VppRef/VppThisWav
+                WaveformNew[i,j,:]=WaveformNew[i,j,:]*fac
+
     if TrendOff == 5:
         refwav = np.zeros(wavlen, dtype='<f')
         if Xres < 0.11:
