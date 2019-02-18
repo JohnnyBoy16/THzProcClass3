@@ -233,7 +233,7 @@ def ReMap(waveform, X, Y, Xmax, Xmin, Ymin, Xres, Yres, Xstep, Ystep, ScanType, 
 
     # for all options, always correct all waveform amplitudes by normalizing
     # the corresponding reflections off front AL patch   28JAN2019
-    if TrendOff!=0:
+    if TrendOff!=0 and TrendOff!=7:
         refwav=np.zeros(wavlen,dtype='<f')
         refwav[:]=WaveformNew[Ystep//2,Xstep//2,:]  # take central waveform as rerference
         VppRef=np.amax(refwav[0:wavlen//3])-np.amin(refwav[0:wavlen//3]) # assume the AL reflection is located within frist 1/3 of waveform
@@ -242,6 +242,33 @@ def ReMap(waveform, X, Y, Xmax, Xmin, Ymin, Xres, Yres, Xstep, Ystep, ScanType, 
                 VppThisWav=np.amax(WaveformNew[i,j,0:wavlen//3])-np.amin(WaveformNew[i,j,0:wavlen//3])
                 fac=VppRef/VppThisWav
                 WaveformNew[i,j,:]=WaveformNew[i,j,:]*fac
+
+    if TrendOff==7:
+
+        refwav=np.zeros(wavlen,dtype='<f')
+        early=np.zeros(100,dtype=int) ; late=np.zeros(100,dtype=int) ; total=float(Xstep*Ystep)
+        for i in range(Xstep//4,Xstep-Xstep//4):  # use only the middle 1/2 x points
+            refwav[:]+=WaveformNew[3,i,:] # 4-th row from top
+        refwav[:]=refwav[:]/float(Xstep-2*(Xstep//4)+1)
+        RefRange=wavlen//3
+        VppRefwav=np.amax(refwav[0:RefRange])-np.amin(refwav[0:RefRange])
+        PosRefPeakLoc=np.argmax(refwav[0:RefRange])
+
+        for i in range(Ystep):
+            for j in range(Xstep):
+                VppThisWav=np.amax(WaveformNew[i,j,0:RefRange])-np.amin(WaveformNew[i,j,0:RefRange])
+                PosThisPeakLoc=np.argmax(WaveformNew[i,j,0:RefRange])
+                fac=VppThisWav/VppRefwav # scale the AL reflection amp
+                if PosRefPeakLoc<PosThisPeakLoc:
+                    shift=PosThisPeakLoc-PosRefPeakLoc
+                    late[shift]+=1
+                    WaveformNew[i,j,shift:]=WaveformNew[i,j,shift:]-fac*refwav[0:-shift]
+                    WaveformNew[i,j,0:shift]=WaveformNew[i,j,shift]
+                else:
+                    shift=PosRefPeakLoc-PosThisPeakLoc
+                    early[shift]+=1
+                    WaveformNew[i,j,0:wavlen-shift]=WaveformNew[i,j,0:wavlen-shift]-fac*refwav[shift:]
+                    WaveformNew[i,j,wavlen-shift:]=WaveformNew[i,j,wavlen-shift-1]
 
     if TrendOff == 5:
         refwav = np.zeros(wavlen, dtype='<f')
