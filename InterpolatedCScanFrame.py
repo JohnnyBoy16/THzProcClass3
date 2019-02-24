@@ -1,5 +1,6 @@
 import pdb
 
+import numpy as np
 import matplotlib.pyplot as plt
 import wx
 
@@ -127,8 +128,8 @@ class InterpolatedCScanFrame(ParentFrame):
         xid = event.xdata
         yid = event.ydata
         if xid is not None and yid is not None:
-            x_index = int((xid - self.data.x_min) / self.data.dx)
-            y_index = int((yid - self.data.y_min) / self.data.dy)
+            x_index = np.argmin(np.abs(self.data.x - xid))
+            y_index = np.argmin(np.abs(self.data.y - yid))
             point_amp = self.data.c_scan[y_index, x_index]
             status_string = '(%.6f, %.6f), [%.6f]' % (xid, yid, point_amp)
             self.status_bar.SetStatusText(status_string)
