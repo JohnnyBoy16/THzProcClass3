@@ -36,6 +36,8 @@ class RawCScanFrame(ParentFrame):
         # the orientation of the colorbar for this specific frame
         self.colorbar_dir = 'vertical'
 
+        self.ij_indexing = False
+
         # the C-Scan image
         self.image = None
 
@@ -55,6 +57,8 @@ class RawCScanFrame(ParentFrame):
 
         # menu item that allows the user to switch to the frequency domain
         self.switch_freq_button = wx.MenuItem
+
+        self.change_indexing_button = wx.MenuItem
 
         # option button to put in the options menu (recursion? LOL)
         # this opens the options menu popup
@@ -86,6 +90,11 @@ class RawCScanFrame(ParentFrame):
         self.switch_freq_button = wx.MenuItem(self.options_menu, wx.ID_ANY,
                                               title, description)
 
+        title = 'Indexing Option'
+        description = 'Change indexing from (i,j) to (x,y) or vice versa'
+        self.change_indexing_button = wx.MenuItem(self.options_menu, wx.ID_ANY,
+                                                  title, description)
+
         title = 'Options Menu'
         description = 'Opens the Options Menu'
         self.options_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
@@ -94,6 +103,7 @@ class RawCScanFrame(ParentFrame):
         self.options_menu.Append(self.rescale_colorbar_menu)
         self.options_menu.Append(self.colorbar_dir_menu_button)
         self.options_menu.Append(self.switch_freq_button)
+        self.options_menu.Append(self.change_indexing_button)
         self.options_menu.Append(self.options_button)
 
         self.menu_bar.Append(self.options_menu, '&Options')
@@ -104,10 +114,19 @@ class RawCScanFrame(ParentFrame):
         """
         Plots the Raw C-Scan initially.
         """
+        if self.ij_indexing:
+            extent = None
+            xlabel = 'X Scan Location (px)'
+            ylabel = 'Y Scan Location (px)'
+        else:
+            extent = self.data.c_scan_extent
+            xlabel = 'X Scan Location (mm)'
+            ylabel = 'Y Scan Location (mm)'
+
         self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
-                                      extent=self.data.c_scan_extent, picker=True, origin='upper')
-        self.axis.set_xlabel('X Scan Location (mm)')
-        self.axis.set_ylabel('Y Scan Location (mm)')
+                                      extent=extent, picker=True, origin='upper')
+        self.axis.set_xlabel(xlabel)
+        self.axis.set_ylabel(ylabel)
         self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.colorbar_dir)
         self.axis.grid()
         self.figure_canvas.draw()
@@ -130,11 +149,20 @@ class RawCScanFrame(ParentFrame):
         # associated with the colorbar seems to become None type. Then when
         # change_colorbar_dir is called, it will crash.
 
+        if self.ij_indexing:
+            extent = None
+            xlabel = 'X Scan Location (px)'
+            ylabel = 'Y Scan Location (px)'
+        else:
+            extent = self.data.c_scan_extent
+            xlabel = 'X Scan Location (mm)'
+            ylabel = 'Y Scan Location (mm)'
+
         self.axis.cla()
         self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
-                                      extent=self.data.c_scan_extent, picker=True)
-        self.axis.set_xlabel('X Scan Location (mm)')
-        self.axis.set_ylabel('Y Scan Location (mm)')
+                                      extent=extent, picker=True)
+        self.axis.set_xlabel(xlabel)
+        self.axis.set_ylabel(ylabel)
         self.colorbar.update_bruteforce(self.image)
         self.axis.grid()
         self.figure_canvas.draw()
@@ -153,6 +181,10 @@ class RawCScanFrame(ParentFrame):
         self.Bind(wx.EVT_MENU, self.on_switch_to_freq, self.switch_freq_button)
         self.Bind(wx.EVT_MENU, self.on_options_button, self.options_button)
 
+        # the button that switches (i,j)/(x,y) indexing
+        self.Bind(wx.EVT_MENU, self.on_change_indexing_button,
+                  self.change_indexing_button)
+
     def motion_handler(self, event):
         """
         Prints the current (x,y) values that the mouse is over to the status
@@ -163,8 +195,12 @@ class RawCScanFrame(ParentFrame):
         if xid is not None and yid is not None:
             # x_index = int((xid - self.data.x_min) / self.data.dx)
             # y_index = int((yid - self.data.y_min) / self.data.dy)
-            x_index = np.argmin(np.abs(self.data.x - xid))
-            y_index = np.argmin(np.abs(self.data.y - yid))
+            if self.ij_indexing:
+                x_index = int(round(xid, 0))
+                y_index = int(round(yid, 0))
+            else:
+                x_index = np.argmin(np.abs(self.data.x - xid))
+                y_index = np.argmin(np.abs(self.data.y - yid))
             point_amp = self.data.c_scan[y_index, x_index]
             status_string = '(%.4f, %.4f), [%.4f]' % (xid, yid, point_amp)
             self.status_bar.SetStatusText(status_string)
@@ -189,10 +225,14 @@ class RawCScanFrame(ParentFrame):
         x_data = event.xdata
         y_data = event.ydata
 
-        # self.i_index = int((y_data - self.data.y_min) / self.data.dy)
-        # self.j_index = int((x_data - self.data.x_min) / self.data.dx)
-        self.i_index = np.argmin(np.abs(self.data.y - y_data))
-        self.j_index = np.argmin(np.abs(self.data.x - x_data))
+        if self.ij_indexing:
+            self.i_index = int(round(y_data, 0))
+            self.j_index = int(round(x_data, 0))
+        else:
+            # self.i_index = int((y_data - self.data.y_min) / self.data.dy)
+            # self.j_index = int((x_data - self.data.x_min) / self.data.dx)
+            self.i_index = np.argmin(np.abs(self.data.y - y_data))
+            self.j_index = np.argmin(np.abs(self.data.x - x_data))
 
         # have the try catch blocks here so if the use is not using the A-Scan
         # or B-Scan frame the code will still run. An AttributeError will be
@@ -321,6 +361,13 @@ class RawCScanFrame(ParentFrame):
                                      orientation=self.colorbar_dir)
 
         self.figure_canvas.draw()
+
+    def on_change_indexing_button(self, event):
+        """
+        Switches the indexing between (i, j) and (x, y)
+        """
+        self.ij_indexing = not self.ij_indexing
+        self.update()
 
     def on_options_button(self, event):
         """
