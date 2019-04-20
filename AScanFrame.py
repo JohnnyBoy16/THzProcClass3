@@ -56,7 +56,11 @@ class AScanFrame(ParentFrame):
         self.i_index = int
         self.j_index = int
 
-        # value that allows the gate that is grabbed to be stored so it can be moved
+        # controls whether or not the title is displayed above the graph
+        self.show_title = True
+
+        # value that allows the gate that is grabbed to be stored so it can be
+        # moved
         # 0 = front lead gate
         # 1 = back lead gate
         # 2 = front follow gate
@@ -73,6 +77,10 @@ class AScanFrame(ParentFrame):
         # wx menu item that allows the user to switch between using the (i, j)
         # or (x, y) coordinate system
         self.location_view_menu = None
+
+        # wx menu item that allows the user to switch between having the title
+        # visible or not
+        self.toggle_title_menu = wx.MenuItem
 
         # stores the line object that is clicked on when moving the gates
         self.line_held = None
@@ -115,6 +123,7 @@ class AScanFrame(ParentFrame):
         self.Bind(wx.EVT_MENU, self.switch_a_scan_view, self.a_scan_view_menu)
         self.Bind(wx.EVT_MENU, self.change_index_system, self.index_view_menu)
         self.Bind(wx.EVT_MENU, self.on_change_gate_button, self.change_gate_menu)
+        self.Bind(wx.EVT_MENU, self.on_toggle_title_button, self.toggle_title_menu)
 
     def modify_menu(self):
         """
@@ -133,6 +142,12 @@ class AScanFrame(ParentFrame):
 
         self.change_gate_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Change Gate', 'Change Gate')
         options_menu.Append(self.change_gate_menu)
+
+        self.toggle_title_menu = wx.MenuItem(options_menu, wx.ID_ANY,
+                                             'Toggle Title Visibility',
+                                             'Toggle title visibility on/off')
+
+        options_menu.Append(self.toggle_title_menu)
 
         self.menu_bar.Append(options_menu, '&Options')
 
@@ -187,8 +202,12 @@ class AScanFrame(ParentFrame):
         self.time_axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
         self.time_axis.set_xlabel('Time (ps)')
         self.time_axis.set_ylabel('Amplitude')
-        self.time_axis.set_title(title_string)
         self.time_axis.grid()
+
+        if self.show_title:
+            self.time_axis.set_title(title_string)
+        else:
+            self.time_axis.set_title('')
 
         # if the follow gate is off and signal type is 1, program uses pk to pk values across the
         # entire waveform, so plotting gates is not necessary
@@ -321,6 +340,14 @@ class AScanFrame(ParentFrame):
         """
 
         ChangeGateFrame(self, self.holder, self.data)
+
+    def on_toggle_title_button(self, event):
+        """
+        Changes whether the title is visible or not. This can be used in case
+        we save a figure and do not want to to have the title displayed.
+        """
+        self.show_title = not self.show_title
+        self.plot()
 
     def motion_handler(self, event):
         """
