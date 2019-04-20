@@ -77,12 +77,16 @@ class RawCScanFrame(ParentFrame):
         """
         self.options_menu = wx.Menu()
 
-        self.rescale_colorbar_menu = wx.MenuItem(self.options_menu, wx.ID_ANY, 'Rescale Colorbar',
-                                                 'Rescale colorbar with current image')
+        title = 'Rescale Colorbar'
+        description = 'Rescale colorbar to the current image view'
+        self.rescale_colorbar_menu = wx.MenuItem(self.options_menu, wx.ID_ANY,
+                                                 title, description)
 
         title = 'Change Colorbar Orientation'
-        description = 'Changes the colorbar orientation between horizontal and vertical'
-        self.colorbar_dir_menu_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
+        description = ('Changes the colorbar orientation between horizontal '
+                       'and vertical')
+        self.colorbar_dir_menu_button = wx.MenuItem(self.options_menu,
+                                                    wx.ID_ANY, title,
                                                     description)
 
         title = 'Switch to Frequency Domain'
@@ -123,11 +127,13 @@ class RawCScanFrame(ParentFrame):
             xlabel = 'X Scan Location (mm)'
             ylabel = 'Y Scan Location (mm)'
 
-        self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
-                                      extent=extent, picker=True, origin='upper')
+        self.image = self.axis.imshow(self.data.c_scan, interpolation='none',
+                                      cmap='gray', extent=extent, picker=True,
+                                      origin='upper')
         self.axis.set_xlabel(xlabel)
         self.axis.set_ylabel(ylabel)
-        self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.colorbar_dir)
+        self.colorbar = plt.colorbar(self.image, ax=self.axis,
+                                     orientation=self.colorbar_dir)
         self.axis.grid()
         self.figure_canvas.draw()
 
@@ -159,8 +165,8 @@ class RawCScanFrame(ParentFrame):
             ylabel = 'Y Scan Location (mm)'
 
         self.axis.cla()
-        self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
-                                      extent=extent, picker=True)
+        self.image = self.axis.imshow(self.data.c_scan, interpolation='none',
+                                      cmap='gray', extent=extent, picker=True)
         self.axis.set_xlabel(xlabel)
         self.axis.set_ylabel(ylabel)
         self.colorbar.update_bruteforce(self.image)
@@ -172,12 +178,15 @@ class RawCScanFrame(ParentFrame):
         Binds the matplotlib and wx events to their method handlers
         """
         # matplotlib events
-        self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event',
+                                       self.motion_handler)
         self.figure_canvas.mpl_connect('button_press_event', self.select_point)
 
         # wx events
-        self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
-        self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
+        self.Bind(wx.EVT_MENU, self.on_rescale_click,
+                  self.rescale_colorbar_menu)
+        self.Bind(wx.EVT_MENU, self.change_colorbar_dir,
+                  self.colorbar_dir_menu_button)
         self.Bind(wx.EVT_MENU, self.on_switch_to_freq, self.switch_freq_button)
         self.Bind(wx.EVT_MENU, self.on_options_button, self.options_button)
 
