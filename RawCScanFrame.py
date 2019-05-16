@@ -119,9 +119,15 @@ class RawCScanFrame(ParentFrame):
         Plots the Raw C-Scan initially.
         """
         if self.ij_indexing:
+            # if using pixel number it doesn't matter if it an x-y scan or
+            # turntable scan
             extent = None
             xlabel = 'X Scan Location (px)'
             ylabel = 'Y Scan Location (px)'
+        elif self.data.axis == 'Turntable':
+            extent = self.data.c_scan_extent
+            xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
+            ylabel = 'Y Scan Location (mm)'
         else:
             extent = self.data.c_scan_extent
             xlabel = 'X Scan Location (mm)'
@@ -159,6 +165,10 @@ class RawCScanFrame(ParentFrame):
             extent = None
             xlabel = 'X Scan Location (px)'
             ylabel = 'Y Scan Location (px)'
+        elif self.data.axis == 'Turntable':
+            extent = self.data.c_scan_extent
+            xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
+            ylabel = 'Y Scan Location (mm)'
         else:
             extent = self.data.c_scan_extent
             xlabel = 'X Scan Location (mm)'
