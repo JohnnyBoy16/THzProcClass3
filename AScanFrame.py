@@ -56,7 +56,11 @@ class AScanFrame(ParentFrame):
         self.i_index = int
         self.j_index = int
 
-        # value that allows the gate that is grabbed to be stored so it can be moved
+        # controls whether or not the title is displayed above the graph
+        self.show_title = True
+
+        # value that allows the gate that is grabbed to be stored so it can be
+        # moved
         # 0 = front lead gate
         # 1 = back lead gate
         # 2 = front follow gate
@@ -74,11 +78,15 @@ class AScanFrame(ParentFrame):
         # or (x, y) coordinate system
         self.location_view_menu = None
 
+        # wx menu item that allows the user to switch between having the title
+        # visible or not
+        self.toggle_title_menu = wx.MenuItem
+
         # stores the line object that is clicked on when moving the gates
         self.line_held = None
 
-        # tells itself when it has plotted the first time,
-        # otherwise motion_handler() throws errors if nothing has been plotted yet
+        # tells itself when it has plotted the first time, otherwise
+        # motion_handler() throws errors if nothing has been plotted yet
         self.is_initialized = False
 
         # store whether or not frequency domain plots are visible
@@ -107,14 +115,20 @@ class AScanFrame(ParentFrame):
         """
         # matplotlib events
         self.figure_canvas.mpl_connect('pick_event', self.grab_gate_handler)
-        self.figure_canvas.mpl_connect('button_release_event', self.release_gate_handler)
-        self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
-        self.figure_canvas.mpl_connect('motion_notify_event', self.gate_slider)
+        self.figure_canvas.mpl_connect('button_release_event',
+                                       self.release_gate_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event',
+                                       self.motion_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event',
+                                       self.gate_slider)
 
         # wxPython events
         self.Bind(wx.EVT_MENU, self.switch_a_scan_view, self.a_scan_view_menu)
         self.Bind(wx.EVT_MENU, self.change_index_system, self.index_view_menu)
-        self.Bind(wx.EVT_MENU, self.on_change_gate_button, self.change_gate_menu)
+        self.Bind(wx.EVT_MENU, self.on_change_gate_button,
+                  self.change_gate_menu)
+        self.Bind(wx.EVT_MENU, self.on_toggle_title_button,
+                  self.toggle_title_menu)
 
     def modify_menu(self):
         """
@@ -123,16 +137,28 @@ class AScanFrame(ParentFrame):
         """
         options_menu = wx.Menu()
 
-        self.a_scan_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Toggle A-Scan Only',
-                                            'Turn A-Scan on/off')
+        title = 'Toggle A-Scan Only'
+        description = 'Turn A-Scan on/off'
+        self.a_scan_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, title,
+                                            description)
         options_menu.Append(self.a_scan_view_menu)
 
-        self.index_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Indexing Option',
-                                           'Change location description from (x, y) to (i, j)')
+        title = 'Indexing Option'
+        description = 'Change indexing from (x, y) to (i, j)'
+        self.index_view_menu = wx.MenuItem(options_menu, wx.ID_ANY, title,
+                                           description)
         options_menu.Append(self.index_view_menu)
 
-        self.change_gate_menu = wx.MenuItem(options_menu, wx.ID_ANY, 'Change Gate', 'Change Gate')
+        self.change_gate_menu = wx.MenuItem(options_menu, wx.ID_ANY,
+                                            'Change Gate', 'Change Gate')
         options_menu.Append(self.change_gate_menu)
+
+        title = 'Toggle Title Visibility'
+        description = 'Toggle Title Visibility on/off'
+        self.toggle_title_menu = wx.MenuItem(options_menu, wx.ID_ANY,
+                                             title, description)
+
+        options_menu.Append(self.toggle_title_menu)
 
         self.menu_bar.Append(options_menu, '&Options')
 
@@ -181,49 +207,59 @@ class AScanFrame(ParentFrame):
         else:
             title_string = 'Location: x=%0.2f, y=%0.2f' % (xloc, yloc)
 
-        title_string += ', Follow Gate: [%d, %d]' % (self.data.gate[1][0], self.data.gate[1][1])
+        title_string += ', Follow Gate: [%d, %d]' % (self.data.gate[1][0],
+                                                     self.data.gate[1][1])
 
         self.time_axis.cla()
         self.time_axis.plot(self.data.time, self.data.waveform[i, j, :], 'r')
         self.time_axis.set_xlabel('Time (ps)')
         self.time_axis.set_ylabel('Amplitude')
-        self.time_axis.set_title(title_string)
         self.time_axis.grid()
 
-        # if the follow gate is off and signal type is 1, program uses pk to pk values across the
-        # entire waveform, so plotting gates is not necessary
+        if self.show_title:
+            self.time_axis.set_title(title_string)
+        else:
+            self.time_axis.set_title('')
+
+        # if the follow gate is off and signal type is 1, program uses pk to pk
+        # values across the entire waveform, so plotting gates is not necessary
         if not self.data.follow_gate_on and self.data.signal_type == 1:
             return
 
         # plot the lead gates
-        self.time_axis.axvline(self.data.time[self.data.gate[0][0]], color='k', linestyle='--',
-                               linewidth=1.0, picker=2)
-        self.time_axis.axvline(self.data.time[self.data.gate[0][1]], color='k', linestyle='--',
-                               linewidth=1.0, picker=2)
+        self.time_axis.axvline(self.data.time[self.data.gate[0][0]], color='k',
+                               linestyle='--', linewidth=1.0, picker=2)
+        self.time_axis.axvline(self.data.time[self.data.gate[0][1]], color='k',
+                               linestyle='--', linewidth=1.0, picker=2)
 
-        # if follow gate is on and being used with current signal type; plot them
-        # signal type = 0 is to use the pk to pk voltage within the lead gates
+        # if follow gate is on and being used with current signal type; plot
+        # them signal type = 0 is to use the pk to pk voltage within the lead
+        # gates
         if self.data.follow_gate_on and self.data.signal_type != 0:
             followL_idx = self.data.peak_bin[3, 1, i, j]
             followR_idx = self.data.peak_bin[4, 1, i, j]
-            self.time_axis.axvline(self.data.time[followL_idx], color='b', linewidth=1.0,
-                                   picker=2)
-            self.time_axis.axvline(self.data.time[followR_idx], color='g', linewidth=1.0,
-                                   picker=2)
+            self.time_axis.axvline(self.data.time[followL_idx], color='b',
+                                   linewidth=1.0, picker=2)
+            self.time_axis.axvline(self.data.time[followR_idx], color='g',
+                                   linewidth=1.0, picker=2)
 
         # if follow gate is on and using peak to peak voltage within follow
         # gates plot the peak locations
         if self.data.follow_gate_on and self.data.signal_type == 1:
             pos_peak = self.data.peak_bin[0, 1, i, j]
             neg_peak = self.data.peak_bin[1, 1, i, j]
-            self.time_axis.plot(self.data.time[pos_peak], self.data.waveform[i, j, pos_peak], 'b+')
-            self.time_axis.plot(self.data.time[neg_peak], self.data.waveform[i, j, neg_peak], 'gx')
+            self.time_axis.plot(self.data.time[pos_peak],
+                                self.data.waveform[i, j, pos_peak], 'b+')
+            self.time_axis.plot(self.data.time[neg_peak],
+                                self.data.waveform[i, j, neg_peak], 'gx')
 
             # now plot the peaks in the front gate
             pos_peak = self.data.peak_bin[0, 0, i, j]
             neg_peak = self.data.peak_bin[1, 0, i, j]
-            self.time_axis.plot(self.data.time[pos_peak], self.data.waveform[i, j, pos_peak], 'k*')
-            self.time_axis.plot(self.data.time[neg_peak], self.data.waveform[i, j, neg_peak], 'k*')
+            self.time_axis.plot(self.data.time[pos_peak],
+                                self.data.waveform[i, j, pos_peak], 'k*')
+            self.time_axis.plot(self.data.time[neg_peak],
+                                self.data.waveform[i, j, neg_peak], 'k*')
 
     def freq_plot(self, i, j):
         """
@@ -246,9 +282,11 @@ class AScanFrame(ParentFrame):
             left_gate = self.data.gate[0][0]
             right_gate = self.data.gate[0][1]
 
-        # create time domain waveform as zeros so it has the correct number of points
+        # create time domain waveform as zeros so it has the correct number
+        # of points
         time_waveform = np.zeros(self.data.wave_length)
-        time_waveform[left_gate:right_gate] = self.data.waveform[i, j, left_gate:right_gate]
+        time_waveform[left_gate:right_gate] = \
+            self.data.waveform[i, j, left_gate:right_gate]
 
         freq_waveform = np.fft.rfft(time_waveform) * self.data.dt
 
@@ -322,6 +360,14 @@ class AScanFrame(ParentFrame):
 
         ChangeGateFrame(self, self.holder, self.data)
 
+    def on_toggle_title_button(self, event):
+        """
+        Changes whether the title is visible or not. This can be used in case
+        we save a figure and do not want to to have the title displayed.
+        """
+        self.show_title = not self.show_title
+        self.plot()
+
     def motion_handler(self, event):
         """
         Prints the current (x,y) values that the mouse is over to the status bar
@@ -357,7 +403,8 @@ class AScanFrame(ParentFrame):
         """
         Determines that gate that is clicked on
         """
-        # if no point on the C-Scan has been clicked on yet, do nothing and return
+        # if no point on the C-Scan has been clicked on yet, do nothing and
+        # return
         if not self.is_initialized:
             return
 
@@ -390,14 +437,17 @@ class AScanFrame(ParentFrame):
             self.gate_held = 1  # clicked on the back front gate
             diff = diff1
 
-        # if follow gate is on we need to check the follow gates also
-        # use peak_bin to check with the follow gate location for this particular (i, j) pair
+        # if follow gate is on we need to check the follow gates also use
+        # peak_bin to check with the follow gate location for this particular
+        # (i, j) pair
         if self.data.follow_gate_on:
             # difference between point clicked and lead follow gate
-            diff2 = np.abs(index - self.data.peak_bin[3, 1, self.i_index, self.j_index])
+            diff2 = np.abs(index - self.data.peak_bin[3, 1, self.i_index,
+                                                      self.j_index])
 
             # back follow gate
-            diff3 = np.abs(index - self.data.peak_bin[4, 1, self.i_index, self.j_index])
+            diff3 = np.abs(index - self.data.peak_bin[4, 1, self.i_index,
+                                                      self.j_index])
 
             # determine if either is closer than the front gate
             if diff2 < diff:  # point clicked is closest to lead follow gate
@@ -461,7 +511,8 @@ class AScanFrame(ParentFrame):
             return
 
         # convert time value (xdata) to index
-        index = int(round(event.xdata * (self.data.wave_length-1) / self.data.time_length, 0))
+        index = int(round(event.xdata * (self.data.wave_length-1) /
+                          self.data.time_length, 0))
 
         # ensure that the gate is inside of the bounds
         if index < 0:
@@ -476,8 +527,8 @@ class AScanFrame(ParentFrame):
             new_gate[0][0] = index
         elif self.gate_held == 1:  # back lead gate
             new_gate[0][1] = index
-        # to adjust the follow gate, we need to use new index in relation to the old one found in
-        # peak_bin
+        # to adjust the follow gate, we need to use new index in relation to
+        # the old one found in peak_bin
         elif self.gate_held == 2:  # front follow gate
             new_gate[1][0] = self.data.gate[1][0] - \
                 (self.data.peak_bin[3, 1, self.i_index, self.j_index] - index)
@@ -485,10 +536,10 @@ class AScanFrame(ParentFrame):
             new_gate[1][1] = self.data.gate[1][1] - \
                 (self.data.peak_bin[4, 1, self.i_index, self.j_index] - index)
 
-        # if follow gate is on, use the change gate method, which updates bin_range, and calls
-        # find_peaks function to update peak_bin
-        # if a value error is encountered it usually means that the left follow gate is greater
-        # than the last time length index
+        # if follow gate is on, use the change gate method, which updates
+        # bin_range, and calls find_peaks function to update peak_bin
+        # if a value error is encountered it usually means that the left
+        # follow gate is greater than the last time length index
         if self.data.follow_gate_on:
             self.data.change_gate(new_gate)
             self.line_held.set_xdata([event.xdata, event.xdata])

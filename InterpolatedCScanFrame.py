@@ -70,9 +70,11 @@ class InterpolatedCScanFrame(ParentFrame):
         self.options_menu = wx.Menu()
 
         title = 'Change Colorbar Orientation'
-        description = 'Changes the colorbar orientation between vertical and horizontal'
-        self.change_colorbar_dir_button = wx.MenuItem(self.options_menu, wx.ID_ANY,
-                                                      title, description)
+        description = ('Changes the colorbar orientation between vertical and'
+                       ' horizontal')
+        self.change_colorbar_dir_button = wx.MenuItem(self.options_menu,
+                                                      wx.ID_ANY, title,
+                                                      description)
 
         self.options_menu.Append(self.change_colorbar_dir_button)
 
@@ -85,16 +87,19 @@ class InterpolatedCScanFrame(ParentFrame):
         Connects events to their appropriate method
         """
         # matplotlib events
-        self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event',
+                                       self.motion_handler)
 
         # wx events
-        self.Bind(wx.EVT_MENU, self.on_change_colorbar_dir, self.change_colorbar_dir_button)
+        self.Bind(wx.EVT_MENU, self.on_change_colorbar_dir,
+                  self.change_colorbar_dir_button)
 
     def plot(self):
         """
         Plot the interpolated C-Scan for the current gate location
         """
-        self.image = self.axis.imshow(self.data.c_scan, interpolation='bilinear', cmap='jet',
+        self.image = self.axis.imshow(self.data.c_scan, cmap='jet',
+                                      interpolation='bilinear',
                                       extent=self.data.c_scan_extent)
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
@@ -112,7 +117,8 @@ class InterpolatedCScanFrame(ParentFrame):
         # colorbar.update_bruteforce() to have the colorbar actually update.
         # Using self.axis.cla() does not actually remove the colorbar
         self.axis.cla()
-        self.image = self.axis.imshow(self.data.c_scan, interpolation='bilinear', cmap='jet',
+        self.image = self.axis.imshow(self.data.c_scan, cmap='jet',
+                                      interpolation='bilinear',
                                       extent=self.data.c_scan_extent)
         self.axis.set_xlabel('X Scan Location (mm)')
         self.axis.set_ylabel('Y Scan Location (mm)')
