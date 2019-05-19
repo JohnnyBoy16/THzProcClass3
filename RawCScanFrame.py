@@ -124,7 +124,7 @@ class RawCScanFrame(ParentFrame):
             extent = None
             xlabel = 'X Scan Location (px)'
             ylabel = 'Y Scan Location (px)'
-        elif self.data.axis == 'Turntable':
+        elif self.data.axis1 == 'Turntable':
             extent = self.data.c_scan_extent
             xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
             ylabel = 'Y Scan Location (mm)'
@@ -165,7 +165,7 @@ class RawCScanFrame(ParentFrame):
             extent = None
             xlabel = 'X Scan Location (px)'
             ylabel = 'Y Scan Location (px)'
-        elif self.data.axis == 'Turntable':
+        elif self.data.axis1 == 'Turntable':
             extent = self.data.c_scan_extent
             xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
             ylabel = 'Y Scan Location (mm)'
