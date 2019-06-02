@@ -98,10 +98,16 @@ class InterpolatedCScanFrame(ParentFrame):
         """
         Plot the interpolated C-Scan for the current gate location
         """
+
+        if self.data.axis1 == 'Turntable':
+            xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
+        else:
+            xlabel = 'X Scan Location (mm)'
+
         self.image = self.axis.imshow(self.data.c_scan, cmap='jet',
                                       interpolation='bilinear',
                                       extent=self.data.c_scan_extent)
-        self.axis.set_xlabel('X Scan Location (mm)')
+        self.axis.set_xlabel(xlabel)
         self.axis.set_ylabel('Y Scan Location (mm)')
         self.colorbar = plt.colorbar(self.image, orientation=self.colorbar_dir)
         self.axis.grid()
@@ -117,10 +123,16 @@ class InterpolatedCScanFrame(ParentFrame):
         # colorbar.update_bruteforce() to have the colorbar actually update.
         # Using self.axis.cla() does not actually remove the colorbar
         self.axis.cla()
+
+        if self.data.axis1 == 'Turntable':
+            xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
+        else:
+            xlabel = 'X Scan Location (mm)'
+
         self.image = self.axis.imshow(self.data.c_scan, cmap='jet',
                                       interpolation='bilinear',
                                       extent=self.data.c_scan_extent)
-        self.axis.set_xlabel('X Scan Location (mm)')
+        self.axis.set_xlabel(xlabel)
         self.axis.set_ylabel('Y Scan Location (mm)')
         self.colorbar.update_bruteforce(self.image)
         self.axis.grid()
