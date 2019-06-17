@@ -1,4 +1,5 @@
 import pdb
+import copy
 
 import matplotlib.pyplot as plt
 import wx
@@ -64,11 +65,35 @@ class RawCScanFrame(ParentFrame):
         # this opens the options menu popup
         self.options_button = wx.MenuItem
 
+        self.data.original_waveform = copy.deepcopy(self.data.waveform)
+        self.data.normalized_waveform = (self.data.waveform /
+                                         (self.data.waveform.max(axis=-1) -
+                                          self.data.waveform.min(axis=-1))[:, :, None])
+
         self.modify_menu()
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
 
         plt.close(self.figure)
+
+    # Override from ParentFrame
+    def initialize_sizer(self):
+        """
+        """
+        super(RawCScanFrame, self).initialize_sizer()
+
+        self.gbs = wx.GridBagSizer(vgap=10, hgap=10)
+        self.add_controls()
+        self.sizer.Add(self.gbs)
+        self.Fit()
+
+    def add_controls(self):
+        """
+        """
+        self.normalize_waveforms_cb = wx.CheckBox(self,
+                                                  label='Normalize Waveforms')
+
+        self.gbs.Add(self.normalize_waveforms_cb, (0, 0))
 
     def modify_menu(self):
         """
@@ -203,6 +228,24 @@ class RawCScanFrame(ParentFrame):
         # the button that switches (i,j)/(x,y) indexing
         self.Bind(wx.EVT_MENU, self.on_change_indexing_button,
                   self.change_indexing_button)
+
+        self.Bind(wx.EVT_CHECKBOX, self.normalize_checkbox_handler,
+                  self.normalize_waveforms_cb)
+
+    def normalize_checkbox_handler(self, event):
+        """
+        """
+
+        if self.normalize_waveforms_cb.IsChecked():
+            self.data.waveform = self.data.normalized_waveform
+        else:
+            self.data.waveform = self.data.original_waveform
+
+        self.data.make_c_scan()
+        self.update()
+
+        if self.holder.a_scan_frame.is_initialized:
+            self.holder.a_scan_frame.plot()
 
     def motion_handler(self, event):
         """
