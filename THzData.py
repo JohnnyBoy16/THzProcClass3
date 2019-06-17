@@ -573,7 +573,7 @@ class THzData(object):
         self.y_max = self.y[-1]
 
         # update extent
-        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
+        self._calculate_c_scan_extent()
 
     def adjust_coordinates(self, i, j, y=0, x=0):
         """
@@ -606,6 +606,14 @@ class THzData(object):
         Helper method to calculate the C-Scan extent so this is done in one
         place.
         """
+
+        # Note that matplotlib considers the center of the (x, y) coordinate
+        # to be the center of the pixel. Therefor x_min, should be the center
+        # of the left most pixel and the edge of that pixel is then x_min -
+        # true_x_res/2. A 1x1 pixel image, would have extent (-0.5, 0.5, -0.5,
+        # 0.5). See matplotlib doc page at
+        # https://matplotlib.org/tutorials/intermediate/imshow_extent.html
+
         self.c_scan_extent = (self.x[0] - self.true_x_res/2,
                               self.x[-1] + self.true_x_res/2,
                               self.y[-1] + self.true_y_res/2,
@@ -621,12 +629,25 @@ class THzData(object):
         # in order to vectorize this method, the x or y coordinates are put in
         # the rows, but to plot we want them in the columns. Thus the call to
         # transpose after arranging the data
+
+        # Note that matplotlib considers the center of the (x, y) coordinate
+        # to be the center of the pixel. Therefor x_min, should be the center
+        # of the left most pixel and the edge of that pixel is then x_min -
+        # true_x_res/2. A 1x1 pixel image, would have extent (-0.5, 0.5, -0.5,
+        # 0.5). See matplotlib doc page at
+        # https://matplotlib.org/tutorials/intermediate/imshow_extent.html
+
         if self.b_scan_dir == 'horizontal':
             self.b_scan = self.waveform[yid, :, :]
-            self.b_scan_extent = (self.x[0], self.x[-1], 0, self.time[-1])
+            self.b_scan_extent = (self.x[0] - self.true_x_res/2,
+                                  self.x[-1] + self.true_x_res/2,
+                                  0 - self.dt/2, self.time[-1] + self.dt/2)
+
         else:  # b_scan_dir == 'vertical'
             self.b_scan = self.waveform[:, xid, :]
-            self.b_scan_extent = (self.y[0], self.y[-1], 0, self.time[-1])
+            self.b_scan_extent = (self.y[0] - self.true_y_res/2,
+                                  self.y[-1] + self.true_y_res/2,
+                                  0 - self.dt/2, self.time[-1] + self.dt/2)
 
         # call to transpose is necessary to flip data axis, so x or y location
         # is on the bottom and time is along the y-axis on the plot
