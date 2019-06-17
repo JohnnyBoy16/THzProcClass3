@@ -573,7 +573,7 @@ class THzData(object):
         self.y_max = self.y[-1]
 
         # update extent
-        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
+        self._calculate_c_scan_extent()
 
     def adjust_coordinates(self, i, j, y=0, x=0):
         """
