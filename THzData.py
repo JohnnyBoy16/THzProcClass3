@@ -97,8 +97,10 @@ class THzData(object):
         self.y_max = None  # the largest y value (mm)
         self.scan_type = None  # the type of scan performed usually '2D Image Scan with Encoder'
 
-        # the first axis, usually x, but can be turntable if rotational scan in performed.
-        self.axis = None
+        # The first and second scan axis, usually x & y, but one can be
+        # 'turntable' if rotational scan is performed.
+        self.axis1 = str
+        self.axis2 = str
 
         # the frequency domain representation of the data between either the
         # follow gates, if follow_gate_on is True or the front gates
@@ -208,7 +210,7 @@ class THzData(object):
         self.waveform, self.c_scan, self.x, self.y, self.pos, self.x_step, self.y_step = \
             ReMap(self.waveform, self.x, self.y, self.x_max, self.x_min, self.y_min,
                   self.true_x_res, self.true_y_res, self.x_step, self.y_step, self.scan_type,
-                  self.axis, self.wave_length, self.time_length, self.X_CORRECTION_TOLERANCE,
+                  self.axis1, self.wave_length, self.time_length, self.X_CORRECTION_TOLERANCE,
                   self.X_DIFFERENCE_TOLERANCE, self.Y_DIFFERENCE_TOLERANCE, 0, self.TINY,
                   self.TREND_OFF, self.N_LIMIT)
 
@@ -230,8 +232,8 @@ class THzData(object):
         else:
             raise ValueError('follow_gate_on must be set to either True or False')
 
-        # Return peak_bin to keep track of index values for various points on the waveform
-        # peak_bin is 5 dimensional
+        # Return peak_bin to keep track of index values for various points on
+        # the waveform. peak_bin is 5 dimensional
         # index 0 = positive peak
         # index 1 = negative peak
         # index 2 = half way between positive and negative peak
@@ -294,18 +296,19 @@ class THzData(object):
             idx = 0
 
         # TODO: work on vectorizing code to avoid the for loops
-        # it seems that if using peak_bin we can't vectorize, look into solution for this
+        # it seems that if using peak_bin we can't vectorize, look into
+        # solution for this
 
-        # use Vpp within the front gates regardless of whether follow gate is on or not
-        # the gates are ABSOLUTE INDEX POSITION and DO NOT account for differences in height of the
-        # front surface
+        # use Vpp within the front gates regardless of whether follow gate is
+        # on or not the gates are ABSOLUTE INDEX POSITION and DO NOT account
+        # for differences in height of the front surface
         if signal_type == 0:
             max_amp = np.amax(self.waveform[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
             min_amp = np.amin(self.waveform[:, :, self.gate[0][0]:self.gate[0][1]], axis=2)
             self.c_scan = max_amp - min_amp
 
-        # use Vpp within the follow gates if on, else use Vpp across entire A-Scan
-        # It appears that using peak bin does not allow for vectorization
+        # use Vpp within the follow gates if on, else use Vpp across entire
+        # A-Scan. It appears that using peak bin does not allow for vectorization
         elif signal_type == 1:
             for i in range(self.y_step):
                 for j in range(self.x_step):
@@ -313,7 +316,8 @@ class THzData(object):
                     min_amp = self.waveform[i, j, self.peak_bin[1, idx, i, j]]
                     self.c_scan[i, j] = max_amp - min_amp
 
-        # use avg mag within the gate (abs amplitude within the gate, sum up then avg)
+        # use avg mag within the gate (abs amplitude within the gate, sum up
+        # then avg)
         elif signal_type == 2:
             for i in range(self.y_step):
                 for j in range(self.x_step):
@@ -569,7 +573,7 @@ class THzData(object):
         self.y_max = self.y[-1]
 
         # update extent
-        self.c_scan_extent = (self.x[0], self.x[-1], self.y[-1], self.y[0])
+        self._calculate_c_scan_extent()
 
     def adjust_coordinates(self, i, j, y=0, x=0):
         """
@@ -602,6 +606,14 @@ class THzData(object):
         Helper method to calculate the C-Scan extent so this is done in one
         place.
         """
+
+        # Note that matplotlib considers the center of the (x, y) coordinate
+        # to be the center of the pixel. Therefor x_min, should be the center
+        # of the left most pixel and the edge of that pixel is then x_min -
+        # true_x_res/2. A 1x1 pixel image, would have extent (-0.5, 0.5, -0.5,
+        # 0.5). See matplotlib doc page at
+        # https://matplotlib.org/tutorials/intermediate/imshow_extent.html
+
         self.c_scan_extent = (self.x[0] - self.true_x_res/2,
                               self.x[-1] + self.true_x_res/2,
                               self.y[-1] + self.true_y_res/2,
@@ -614,19 +626,34 @@ class THzData(object):
         :param yid: the row from which to generate B-Scan
         :param xid: the column clicked from which to generate B-Scan
         """
-        # in order to vectorize this method, the x or y coordinates are put in the rows, but to plot
-        # we want them in the columns. Thus the call to transpose after arranging the data
+        # in order to vectorize this method, the x or y coordinates are put in
+        # the rows, but to plot we want them in the columns. Thus the call to
+        # transpose after arranging the data
+
+        # Note that matplotlib considers the center of the (x, y) coordinate
+        # to be the center of the pixel. Therefor x_min, should be the center
+        # of the left most pixel and the edge of that pixel is then x_min -
+        # true_x_res/2. A 1x1 pixel image, would have extent (-0.5, 0.5, -0.5,
+        # 0.5). See matplotlib doc page at
+        # https://matplotlib.org/tutorials/intermediate/imshow_extent.html
+
         if self.b_scan_dir == 'horizontal':
             self.b_scan = self.waveform[yid, :, :]
-            self.b_scan_extent = (self.x[0], self.x[-1], 0, self.time[-1])
+            self.b_scan_extent = (self.x[0] - self.true_x_res/2,
+                                  self.x[-1] + self.true_x_res/2,
+                                  0 - self.dt/2, self.time[-1] + self.dt/2)
+
         else:  # b_scan_dir == 'vertical'
             self.b_scan = self.waveform[:, xid, :]
-            self.b_scan_extent = (self.y[0], self.y[-1], 0, self.time[-1])
+            self.b_scan_extent = (self.y[0] - self.true_y_res/2,
+                                  self.y[-1] + self.true_y_res/2,
+                                  0 - self.dt/2, self.time[-1] + self.dt/2)
 
-        # call to transpose is necessary to flip data axis, so x or y location is on the bottom and
-        # time is along the y-axis on the plot
+        # call to transpose is necessary to flip data axis, so x or y location
+        # is on the bottom and time is along the y-axis on the plot
         self.b_scan = np.transpose(self.b_scan)
-        self.b_scan = np.flipud(self.b_scan)  # flip so top of sample is at bottom of image
+        # flip so top of sample is at bottom of image
+        self.b_scan = np.flipud(self.b_scan)
 
     def set_follow_gate(self, given_boolean):
         """
@@ -757,8 +784,8 @@ class THzData(object):
                     min_pos2 = self.waveform[i, j, left_gate[i, j]:right_gate[i, j]].argmin()
                     min_pos2 += left_gate[i, j]
 
-                    # if min_pos == min_pos2, then we have already found max peak to peak value
-                    # by starting search with argmax()
+                    # if min_pos == min_pos2, then we have already found max
+                    # peak to peak value by starting search with argmax()
                     if min_pos == min_pos2:
                         pass
                     else:
@@ -816,8 +843,9 @@ class THzData(object):
         the front surface echo, and if follow gate is on, the location of the
         2nd peak.
         """
-        self.peak_bin = FindPeaks(self.waveform, self.x_step, self.y_step, self.wave_length,
-                                  self.n_half_pulse, self.FSE_THRESHOLD, self.bin_range,
+        self.peak_bin = FindPeaks(self.waveform, self.x_step, self.y_step,
+                                  self.wave_length, self.n_half_pulse,
+                                  self.FSE_THRESHOLD, self.bin_range,
                                   self.PULSE_LENGTH, self.follow_gate_on)
 
     def printer(self):
@@ -826,13 +854,13 @@ class THzData(object):
         in instantiated
         """
         print()
-        print(' asn wave length =', self.wave_length, ' asn Time Length =', self.time_length,
-              ' delta_t =', self.dt, ' delta_f =', self.df, ' scan type =',
-              self.scan_type)
+        print(' asn wave length =', self.wave_length, ' asn Time Length =',
+              self.time_length, ' delta_t =', self.dt, ' delta_f =', self.df,
+              ' scan type =', self.scan_type)
 
-        print('X min =', self.x_min, ' max =', self.x_max, 'Y min =', self.y_min, ' max=',
-              self.y_max, ' scan step  X =', self.x_step, ' Y =', self.y_step, ' res X =',
-              self.x_res, ' Y =', self.y_res)
+        print('X min =', self.x_min, ' max =', self.x_max, 'Y min =',
+              self.y_min, ' max=', self.y_max, ' scan step  X =', self.x_step,
+              ' Y =', self.y_step, ' res X =', self.x_res, ' Y =', self.y_res)
 
         print('True resolution:  X =', self.true_x_res, ' Y =', self.true_y_res)
         print()
@@ -844,8 +872,8 @@ class THzData(object):
         :param header: the header of the data file class
         """
         # get key parameters from the header
-        # change from Python2: add 'b' to the front of all strings, this tells Python that it is
-        # looking at a list of bytes
+        # change from Python2: add 'b' to the front of all strings, this tells
+        # Python that it is looking at a list of bytes
 
         for item in header:
             b = item.strip()
@@ -858,7 +886,10 @@ class THzData(object):
             elif a[0] == b'Y_RESOLUTION:':
                 self.y_res = float(a[1])
             elif a[0] == b'XSTEPS:':
-                self.x_step = int(float(a[1]))  # can't directly int(a[1]) of string a[1] ?!
+                # must convert a[1] to float and then int, since it is stored
+                # in binary format and the binary representation for float # is
+                # different than int #.
+                self.x_step = int(float(a[1]))
             elif a[0] == b'YSTEPS:':
                 self.y_step = int(float(a[1]))
             elif a[0] == b'XMIN:':
@@ -872,15 +903,18 @@ class THzData(object):
             elif a[0] == b'SCAN_NAME:':
                 self.scan_type = b[10:].strip().decode('utf-8')
             elif a[0] == b'AXIS1:':
-                self.axis = b[7:].strip().decode('utf-8')
+                self.axis1 = b[7:].strip().decode('utf-8')
+            elif a[0] == b'AXIS2:':
+                self.axis2 = b[7:].strip().decode('utf-8')
 
     def delta_calculator(self):
         """
         Calculates dt, df, n_half_pulse, and the time and frequency array that
         are used for plotting.
         """
-        # Note that len(freq) is wave_length/2 + 1. This is so it can be used with
-        # numpy's rfft function. Thomas's THzProc code uses len(freq) as wave_length/2.
+        # Note that len(freq) is wave_length/2 + 1. This is so it can be used
+        # with numpy's rfft function. Thomas's THzProc code uses len(freq)
+        # as wave_length/2.
 
         self.dt = self.time_length / (self.wave_length - 1)
         self.df = 1. / (self.wave_length * self.dt)
@@ -896,26 +930,32 @@ class THzData(object):
 class DataFile(object):
     # Thomas says this class is from Teraview
     def __init__(self, filename, basedir=None):
-        if basedir is not None:  # allows the user to pass through the full filename as 1 argument
+        # allows the user to pass through the full filename as 1 argument
+        if basedir is not None:
             filename = os.path.join(basedir, filename)
         with open(filename, 'rb') as fobj:
-            # Edit from THzProc in Python2, need to add 'b' char to beginning of string in Python3
-            # I think that this lets the interpreter know it is an instance of bytes instead of a
+            # Edit from THzProc in Python2, need to add 'b' char to beginning
+            # of string in Python3. I think that this lets the interpreter
+            # know it is an instance of bytes instead of a
             # string
             self.header = list(iter(fobj.readline, b"ENDOFHEADER\r\n"))
-            # the first 4-byte word after the header gives the length of each row
+            # the first 4-byte word after the header gives the length of
+            # each row
             first_word = fobj.read(4)
             # convert the 4-byte string to a float
-            # change from THzProc in Python2: convert col_size to type int after it has been
-            # unpacked as a float. This change is necessary because Python3 no longer accepts
-            # floats as array indices eg. array[4.0] is invalid. Used in bin_dtype argument to
-            # np.fromfile() below
-            # As far as I can tell we have to unpack it as float first, then convert it to int
+            # change from THzProc in Python2: convert col_size to type int
+            # after it has been unpacked as a float. This change is necessary
+            # because Python3 no longer accepts floats as array indices eg.
+            # array[4.0] is invalid. Used in bin_dtype argument to
+            # np.fromfile() below. As far as I can tell we have to unpack it as
+            # float first, then convert it to int. This is because it is being
+            # converted from a binary representation.
             col_size = int(struct.unpack(">f", first_word)[0])
-            # move the read point back so we can read the first row in its entirety
+            # move the read point back so we can read the first row in its
+            # entirety
             fobj.seek(-4, 1)
-            # define a compound data type for the data: the two coordinate values
-            # followed by the THz waveform
+            # define a compound data type for the data: the two coordinate
+            # values followed by the THz waveform
             bin_dtype = [("x", ">f"), ("y", ">f"), ("waveform", ">f", col_size-2)]
 
             # read the data into an array

@@ -56,14 +56,15 @@ class BScanFrame(ParentFrame):
 
     def modify_menu(self):
         """
-        Modifies the menu to add an options menu that includes an item to switch
-        the B-Scan orientation
+        Modifies the menu to add an options menu that includes an item to
+        switch the B-Scan orientation
         """
         options_menu = wx.Menu()
 
-        status_string = 'Toggles orientation between horizontal and vertical'
+        title = 'Switch B-Scan Orientation'
+        description = 'Toggles orientation between horizontal and vertical'
         self.toggle_orientation_menu = wx.MenuItem(options_menu, wx.ID_ANY,
-                                                   'Switch Orientation', status_string)
+                                                   title, description)
 
         options_menu.Append(self.toggle_orientation_menu)
 
@@ -76,10 +77,12 @@ class BScanFrame(ParentFrame):
         Connects events to their appropriate method
         """
         # matplotlib events
-        self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event',
+                                       self.motion_handler)
 
         # wx events
-        self.Bind(wx.EVT_MENU, self.switch_orientation, self.toggle_orientation_menu)
+        self.Bind(wx.EVT_MENU, self.switch_orientation,
+                  self.toggle_orientation_menu)
 
     def plot(self, i, j):
         """

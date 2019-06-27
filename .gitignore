@@ -16,3 +16,6 @@ THzProc1_12.py
 
 # ignore b-scan slicing driver
 b_scan_slicing_script.py
+
+# ignore script that converts tvl data to a pickle file
+tvl_to_pickle.py

@@ -1,4 +1,5 @@
 import pdb
+import copy
 
 import matplotlib.pyplot as plt
 import wx
@@ -64,11 +65,35 @@ class RawCScanFrame(ParentFrame):
         # this opens the options menu popup
         self.options_button = wx.MenuItem
 
+        self.data.original_waveform = copy.deepcopy(self.data.waveform)
+        self.data.normalized_waveform = (self.data.waveform /
+                                         (self.data.waveform.max(axis=-1) -
+                                          self.data.waveform.min(axis=-1))[:, :, None])
+
         self.modify_menu()
         self.connect_events()
         self.plot()  # make sure to plot the C-Scan to start out with
 
         plt.close(self.figure)
+
+    # Override from ParentFrame
+    def initialize_sizer(self):
+        """
+        """
+        super(RawCScanFrame, self).initialize_sizer()
+
+        self.gbs = wx.GridBagSizer(vgap=10, hgap=10)
+        self.add_controls()
+        self.sizer.Add(self.gbs)
+        self.Fit()
+
+    def add_controls(self):
+        """
+        """
+        self.normalize_waveforms_cb = wx.CheckBox(self,
+                                                  label='Normalize Waveforms')
+
+        self.gbs.Add(self.normalize_waveforms_cb, (0, 0))
 
     def modify_menu(self):
         """
@@ -77,12 +102,16 @@ class RawCScanFrame(ParentFrame):
         """
         self.options_menu = wx.Menu()
 
-        self.rescale_colorbar_menu = wx.MenuItem(self.options_menu, wx.ID_ANY, 'Rescale Colorbar',
-                                                 'Rescale colorbar with current image')
+        title = 'Rescale Colorbar'
+        description = 'Rescale colorbar to the current image view'
+        self.rescale_colorbar_menu = wx.MenuItem(self.options_menu, wx.ID_ANY,
+                                                 title, description)
 
         title = 'Change Colorbar Orientation'
-        description = 'Changes the colorbar orientation between horizontal and vertical'
-        self.colorbar_dir_menu_button = wx.MenuItem(self.options_menu, wx.ID_ANY, title,
+        description = ('Changes the colorbar orientation between horizontal '
+                       'and vertical')
+        self.colorbar_dir_menu_button = wx.MenuItem(self.options_menu,
+                                                    wx.ID_ANY, title,
                                                     description)
 
         title = 'Switch to Frequency Domain'
@@ -115,19 +144,27 @@ class RawCScanFrame(ParentFrame):
         Plots the Raw C-Scan initially.
         """
         if self.ij_indexing:
+            # if using pixel number it doesn't matter if it an x-y scan or
+            # turntable scan
             extent = None
             xlabel = 'X Scan Location (px)'
             ylabel = 'Y Scan Location (px)'
+        elif self.data.axis1 == 'Turntable':
+            extent = self.data.c_scan_extent
+            xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
+            ylabel = 'Y Scan Location (mm)'
         else:
             extent = self.data.c_scan_extent
             xlabel = 'X Scan Location (mm)'
             ylabel = 'Y Scan Location (mm)'
 
-        self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
-                                      extent=extent, picker=True, origin='upper')
+        self.image = self.axis.imshow(self.data.c_scan, interpolation='none',
+                                      cmap='gray', extent=extent, picker=True,
+                                      origin='upper')
         self.axis.set_xlabel(xlabel)
         self.axis.set_ylabel(ylabel)
-        self.colorbar = plt.colorbar(self.image, ax=self.axis, orientation=self.colorbar_dir)
+        self.colorbar = plt.colorbar(self.image, ax=self.axis,
+                                     orientation=self.colorbar_dir)
         self.axis.grid()
         self.figure_canvas.draw()
 
@@ -153,14 +190,18 @@ class RawCScanFrame(ParentFrame):
             extent = None
             xlabel = 'X Scan Location (px)'
             ylabel = 'Y Scan Location (px)'
+        elif self.data.axis1 == 'Turntable':
+            extent = self.data.c_scan_extent
+            xlabel = r'Rotation Angle ($\mathrm{\theta}$)'
+            ylabel = 'Y Scan Location (mm)'
         else:
             extent = self.data.c_scan_extent
             xlabel = 'X Scan Location (mm)'
             ylabel = 'Y Scan Location (mm)'
 
         self.axis.cla()
-        self.image = self.axis.imshow(self.data.c_scan, interpolation='none', cmap='gray',
-                                      extent=extent, picker=True)
+        self.image = self.axis.imshow(self.data.c_scan, interpolation='none',
+                                      cmap='gray', extent=extent, picker=True)
         self.axis.set_xlabel(xlabel)
         self.axis.set_ylabel(ylabel)
         self.colorbar.update_bruteforce(self.image)
@@ -172,18 +213,39 @@ class RawCScanFrame(ParentFrame):
         Binds the matplotlib and wx events to their method handlers
         """
         # matplotlib events
-        self.figure_canvas.mpl_connect('motion_notify_event', self.motion_handler)
+        self.figure_canvas.mpl_connect('motion_notify_event',
+                                       self.motion_handler)
         self.figure_canvas.mpl_connect('button_press_event', self.select_point)
 
         # wx events
-        self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
-        self.Bind(wx.EVT_MENU, self.change_colorbar_dir, self.colorbar_dir_menu_button)
+        self.Bind(wx.EVT_MENU, self.on_rescale_click,
+                  self.rescale_colorbar_menu)
+        self.Bind(wx.EVT_MENU, self.change_colorbar_dir,
+                  self.colorbar_dir_menu_button)
         self.Bind(wx.EVT_MENU, self.on_switch_to_freq, self.switch_freq_button)
         self.Bind(wx.EVT_MENU, self.on_options_button, self.options_button)
 
         # the button that switches (i,j)/(x,y) indexing
         self.Bind(wx.EVT_MENU, self.on_change_indexing_button,
                   self.change_indexing_button)
+
+        self.Bind(wx.EVT_CHECKBOX, self.normalize_checkbox_handler,
+                  self.normalize_waveforms_cb)
+
+    def normalize_checkbox_handler(self, event):
+        """
+        """
+
+        if self.normalize_waveforms_cb.IsChecked():
+            self.data.waveform = self.data.normalized_waveform
+        else:
+            self.data.waveform = self.data.original_waveform
+
+        self.data.make_c_scan()
+        self.update()
+
+        if self.holder.a_scan_frame.is_initialized:
+            self.holder.a_scan_frame.plot()
 
     def motion_handler(self, event):
         """
