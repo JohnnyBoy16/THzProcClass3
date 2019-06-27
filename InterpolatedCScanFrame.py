@@ -45,6 +45,8 @@ class InterpolatedCScanFrame(ParentFrame):
         # menu options to change the orientation of the colorbar
         self.change_colorbar_dir_button = None
 
+        self.rescale_colorbar_menu = wx.MenuItem
+
         # the orientation of the colorbar for this specific frame
         self.colorbar_dir = 'horizontal'
 
@@ -74,7 +76,13 @@ class InterpolatedCScanFrame(ParentFrame):
         self.change_colorbar_dir_button = wx.MenuItem(self.options_menu, wx.ID_ANY,
                                                       title, description)
 
+        title = 'Rescale Colorbar'
+        description = 'Rescale colorbar with current image'
+        self.rescale_colorbar_menu = wx.MenuItem(self.options_menu, wx.ID_ANY,
+                                                 title, description)
+
         self.options_menu.Append(self.change_colorbar_dir_button)
+        self.options_menu.Append(self.rescale_colorbar_menu)
 
         self.menu_bar.Append(self.options_menu, 'Options')
         self.SetMenuBar(self.menu_bar)
@@ -89,6 +97,7 @@ class InterpolatedCScanFrame(ParentFrame):
 
         # wx events
         self.Bind(wx.EVT_MENU, self.on_change_colorbar_dir, self.change_colorbar_dir_button)
+        self.Bind(wx.EVT_MENU, self.on_rescale_click, self.rescale_colorbar_menu)
 
     def plot(self):
         """
@@ -155,3 +164,47 @@ class InterpolatedCScanFrame(ParentFrame):
                                      orientation=self.colorbar_dir)
 
         self.figure_canvas.draw()
+
+    def on_rescale_click(self, event):
+        """
+        Rescales the colorbar with the maximum and minimum values that are
+        currently in the visible plot boundary.
+        """
+        # get the current x and y boundaries of the image
+        # convert to array so they can be edited if necessary
+        x_bounds = np.array(self.axis.get_xlim())
+        y_bounds = np.array(self.axis.get_ylim())
+
+        # since the y_bounds are normally inverted to show the data how we see
+        # it in the lab rearrange them in low -> high order
+        if y_bounds[0] > y_bounds[1]:
+            temp = y_bounds[0]
+            y_bounds[0] = y_bounds[1]
+            y_bounds[1] = temp
+
+        # it is possible that x_bounds may be inverted also
+        if x_bounds[0] > x_bounds[1]:
+            temp = x_bounds[0]
+            x_bounds[0] = x_bounds[1]
+            x_bounds[1] = temp
+
+        j0 = np.argmin(np.abs(self.data.x - x_bounds[0]))
+        j1 = np.argmin(np.abs(self.data.x - x_bounds[1]))
+
+        i0 = np.argmin(np.abs(self.data.y - y_bounds[0]))
+        i1 = np.argmin(np.abs(self.data.y - y_bounds[1]))
+
+        # can get the data matrix with image.get_array()
+        area = self.image.get_array()[i0:i1+1, j0:j1+1]
+
+        # want to include the bounds in calculation, so add 1 to be inclusive
+        # area = self.data.c_scan[i0:i1+1, j0:j1+1]
+
+        # resent vmin and vmax to be the min and max of area inside of plot
+        # bounds
+        self.image.set_clim(vmin=area.min(), vmax=area.max())
+
+        # update colorbar with new vmin and vmax values
+        self.colorbar.update_normal(self.image)
+
+        self.figure_canvas.draw()  # redraw image
